@@ -1,0 +1,48 @@
+eclipse.project.name = appName + '-android'
+
+apply plugin: 'com.android.library'
+
+android {
+  namespace "me.stringdotjar.flixelgdx"
+  compileSdk 36
+
+  defaultConfig {
+    multiDexEnabled = true
+    minSdkVersion 34
+    targetSdkVersion 35
+  }
+  compileOptions {
+    coreLibraryDesugaringEnabled = true
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
+
+repositories {
+  // needed for AAPT2, may be needed for other tools
+  google()
+}
+
+configurations {
+  coreLibraryDesugaring
+}
+
+dependencies {
+  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+
+  api project(":core")
+  api "androidx.multidex:multidex:2.0.1"
+  api "games.rednblack.miniaudio:gdx-miniaudio-platform:$miniaudioVersion:natives-armeabi-v7a"
+  api "games.rednblack.miniaudio:gdx-miniaudio-platform:$miniaudioVersion:natives-arm64-v8a"
+  api "games.rednblack.miniaudio:gdx-miniaudio-platform:$miniaudioVersion:natives-x86"
+  api "games.rednblack.miniaudio:gdx-miniaudio-platform:$miniaudioVersion:natives-x86_64"
+  api "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-arm64-v8a"
+  api "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-armeabi-v7a"
+  api "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86"
+  api "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86_64"
+  api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
+  api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
+  api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
+  api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
+  api "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
+}

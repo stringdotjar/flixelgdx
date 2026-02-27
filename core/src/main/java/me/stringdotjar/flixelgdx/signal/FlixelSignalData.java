@@ -1,0 +1,48 @@
+package me.stringdotjar.flixelgdx.signal;
+
+import games.rednblack.miniaudio.MASound;
+import me.stringdotjar.flixelgdx.Flixel;
+import me.stringdotjar.flixelgdx.display.FlixelState;
+
+/**
+ * Convenience class for holding all signal data types used in the default signals stored in
+ * the global {@link Flixel} manager class.
+ *
+ * <p>{@link UpdateSignalData} is a mutable, reusable class rather than a record because it is
+ * dispatched every frame. Allocating a new object 120 times per second (pre+post) adds GC
+ * pressure that causes frame stutters. Signal handlers must not hold a reference to the data
+ * object past the callback return.
+ */
+public final class FlixelSignalData {
+
+  /**
+   * Mutable carrier for per-frame update data. Reuse the same instance across frames to
+   * avoid GC pressure. Do NOT store a reference to this object; read values during the
+   * callback only.
+   */
+  public static final class UpdateSignalData {
+    private float delta;
+
+    public UpdateSignalData() {}
+
+    public UpdateSignalData(float delta) {
+      this.delta = delta;
+    }
+
+    public float delta() {
+      return delta;
+    }
+
+    public void set(float delta) {
+      this.delta = delta;
+    }
+  }
+
+  public record StateSwitchSignalData(FlixelState screen) {}
+
+  public record SoundPlayedSignalData(MASound sound) {}
+
+  public record MusicPlayedSignalData(MASound music) {}
+
+  private FlixelSignalData() {}
+}

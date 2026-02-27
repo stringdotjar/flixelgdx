@@ -1,0 +1,58 @@
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-core'
+
+apply plugin: "java-library"
+
+// Embed version from build so Flixel.getVersion() can read it at runtime (Gradle does not set JAR manifest like Maven).
+def generateFlixelVersion = tasks.register('generateFlixelVersion', WriteProperties) {
+  destinationFile = layout.buildDirectory.file("generated/version/version.properties")
+  property("version", project.version)
+}
+processResources.from(generateFlixelVersion) {
+  into "me/stringdotjar/flixelgdx"
+}
+
+java {
+  sourceCompatibility = 17
+  targetCompatibility = 17
+}
+
+// Put dependencies on module path so module-info.java can resolve requires (automatic modules).
+tasks.named('compileJava') {
+  doFirst {
+    options.compilerArgs = [
+      '--module-path', classpath.asPath,
+    ]
+    classpath = files()
+  }
+}
+
+// Require Eclipse (and IDEs that use Eclipse project model) to put dependencies on the module path,
+// making "requires gdx" etc. resolve. Without this, only Gradle's compileJava sees them as modules.
+eclipse.classpath.file {
+  whenMerged {
+    entries.findAll { it instanceof org.gradle.plugins.ide.eclipse.model.Library }.each {
+      it.entryAttributes['module'] = 'true'
+    }
+  }
+}
+
+// Avoid JPMS split-package error: gdx and gdx-jnigen-loader both expose com.badlogic.gdx.utils.
+configurations.all {
+  exclude group: 'com.badlogicgames.gdx', module: 'gdx-jnigen-loader'
+}
+
+dependencies {
+  api "com.badlogicgames.gdx:gdx:$gdxVersion"
+  api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+  api "com.github.tommyettinger:anim8-gdx:$anim8Version"
+  api "com.github.tommyettinger:libgdx-utils:$utilsVersion"
+  api "games.rednblack.miniaudio:miniaudio:$miniaudioVersion"
+
+  implementation "org.fusesource.jansi:jansi:$jansiVersion"
+  implementation "org.jetbrains:annotations:26.1.0"
+
+  if (enableGraalNative == 'true') {
+    implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
+  }
+}

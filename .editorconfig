@@ -1,0 +1,52 @@
+# https://editorconfig.org
+# http://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{java,scala,groovy,kt,kts}]
+# 2-space indentation (Google Style Guide Section 4.2)
+indent_style = space
+
+# Even though Google Style Guide Section 2.3 recommends 100 characters,
+# many modern IDEs default to 120 characters, so we follow that convention.
+max_line_length = 120
+
+# Standard Java formatting rules.
+ij_java_use_single_class_imports = true
+ij_java_insert_inner_class_imports = false
+ij_java_class_count_to_use_import_on_demand = 999
+ij_java_names_count_to_use_import_on_demand = 999
+ij_java_packages_to_use_import_on_demand = unset
+ij_java_blank_lines_before_class_end = 0
+ij_java_blank_lines_after_class_header = 1
+ij_java_doc_align_param_comments = false
+ij_java_doc_do_not_wrap_if_one_line = true
+ij_any_keep_simple_blocks_in_one_line = true
+
+# Block formatting (Section 4.1.2)
+ij_java_class_brace_style = end_of_line
+ij_java_method_brace_style = end_of_line
+
+# Space before opening brace (Section 4.6.2)
+ij_java_space_before_class_left_brace = true
+ij_java_space_before_method_left_brace = true
+ij_java_space_before_if_left_brace = true
+ij_java_space_before_while_left_brace = true
+ij_java_space_before_for_left_brace = true
+ij_java_space_before_try_left_brace = true
+ij_java_space_before_catch_left_brace = true
+ij_java_space_before_switch_left_brace = true
+ij_java_space_before_synchronized_left_brace = true
+
+indent_size = 2
+
+[*.gradle]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
