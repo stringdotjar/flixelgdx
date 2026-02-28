@@ -41,11 +41,8 @@ jobs:
         id: setup-android
         uses: android-actions/setup-android@v3
         with:
-          packages: |
-            tools
-            platform-tools
-            platforms;android-36
-            build-tools;36.0.0
+          # Space-separated list (multiline is passed as one arg and breaks sdkmanager)
+          packages: "tools platform-tools platforms;android-36 build-tools;36.0.0"
 
       - name: Create local.properties (Android)
         if: matrix.platform == 'android'
