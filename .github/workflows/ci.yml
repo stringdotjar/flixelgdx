@@ -35,6 +35,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+          cache: 'gradle'
 
       - name: Set up Android SDK
         if: matrix.platform == 'android'
@@ -56,20 +57,20 @@ jobs:
 
       - name: Build (LWJGL3)
         if: matrix.platform == 'linux' || matrix.platform == 'windows' || matrix.platform == 'macos'
-        run: ./gradlew :core:compileJava :lwjgl3:compileJava --no-daemon
+        run: ./gradlew :core:assemble :lwjgl3:assemble --no-daemon
         shell: bash
 
       - name: Build (Android)
         if: matrix.platform == 'android'
-        run: ./gradlew :core:compileJava :android:assembleRelease --no-daemon
+        run: ./gradlew :core:assemble :android:assembleRelease --no-daemon
         shell: bash
 
       - name: Build (iOS)
         if: matrix.platform == 'ios'
-        run: ./gradlew :core:compileJava :ios:compileJava --no-daemon
+        run: ./gradlew :core:assemble :ios:assemble --no-daemon
         shell: bash
 
       - name: Build (TeaVM)
         if: matrix.platform == 'teavm'
-        run: ./gradlew :core:compileJava :teavm:compileJava --no-daemon
+        run: ./gradlew :core:assemble :teavm:assemble --no-daemon
         shell: bash
