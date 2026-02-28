@@ -22,6 +22,10 @@ jobs:
             platform: macos
           - os: ubuntu-latest
             platform: android
+          - os: macos-latest
+            platform: ios
+          - os: ubuntu-latest
+            platform: teavm
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,6 +38,7 @@ jobs:
 
       - name: Set up Android SDK
         if: matrix.platform == 'android'
+        id: setup-android
         uses: android-actions/setup-android@v3
         with:
           packages: |
@@ -42,16 +47,32 @@ jobs:
             platforms;android-36
             build-tools;36.0.0
 
+      - name: Create local.properties (Android)
+        if: matrix.platform == 'android'
+        run: |
+          SDK_DIR="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "sdk.dir=$SDK_DIR" >> local.properties
+
       - name: Grant execute permission for gradlew
         if: matrix.os != 'windows-latest'
         run: chmod +x gradlew
 
-      - name: Build (LWJGL3, iOS, TeaVM)
-        if: matrix.platform != 'android'
-        run: ./gradlew :core:compileJava :lwjgl3:compileJava :ios:compileJava :teavm:compileJava --no-daemon
+      - name: Build (LWJGL3)
+        if: matrix.platform == 'linux' || matrix.platform == 'windows' || matrix.platform == 'macos'
+        run: ./gradlew :core:compileJava :lwjgl3:compileJava --no-daemon
         shell: bash
 
       - name: Build (Android)
         if: matrix.platform == 'android'
         run: ./gradlew :core:compileJava :android:assembleRelease --no-daemon
+        shell: bash
+
+      - name: Build (iOS)
+        if: matrix.platform == 'ios'
+        run: ./gradlew :core:compileJava :ios:compileJava --no-daemon
+        shell: bash
+
+      - name: Build (TeaVM)
+        if: matrix.platform == 'teavm'
+        run: ./gradlew :core:compileJava :teavm:compileJava --no-daemon
         shell: bash
