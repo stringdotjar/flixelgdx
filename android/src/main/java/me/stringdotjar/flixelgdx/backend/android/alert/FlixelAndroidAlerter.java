@@ -2,9 +2,9 @@ package me.stringdotjar.flixelgdx.backend.android.alert;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import me.stringdotjar.flixelgdx.backend.Alerter;
+import me.stringdotjar.flixelgdx.backend.FlixelAlerter;
 
-public class FlixelAndroidAlerter implements Alerter {
+public class FlixelAndroidAlerter implements FlixelAlerter {
 
   private final Activity activity;
 
@@ -28,17 +28,12 @@ public class FlixelAndroidAlerter implements Alerter {
   }
 
   private void showAlert(final String title, final String message, final int iconResId) {
-    activity.runOnUiThread(new Runnable() {
-      @Override
-      public void run() {
-        new AlertDialog.Builder(activity)
-          .setTitle(title)
-          .setMessage(message)
-          .setIcon(iconResId)
-          .setPositiveButton("OK", null)
-          .setCancelable(true)
-          .show();
-      }
-    });
+    activity.runOnUiThread(() -> new AlertDialog.Builder(activity)
+      .setTitle(title)
+      .setMessage(message)
+      .setIcon(iconResId)
+      .setPositiveButton("OK", null)
+      .setCancelable(true)
+      .show());
   }
 }

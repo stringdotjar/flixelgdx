@@ -1,0 +1,28 @@
+plugins {
+  id "java-library"
+  id "org.teavm" version "0.13.0"
+}
+
+eclipse.project.name = appName + '-teavm'
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+java {
+  sourceCompatibility = JavaVersion.VERSION_17
+  targetCompatibility = JavaVersion.VERSION_17
+}
+
+teavm {
+  all {
+    mainClass = "me.stringdotjar.flixelgdx.backend.teavm.FlixelTeaVMLauncher"
+  }
+  js {
+    addedToWebApp = true
+    targetFileName = "flixelgdx.js"
+  }
+}
+
+dependencies {
+  api project(":core")
+  api "com.github.xpenatan.gdx-teavm:backend-web:$gdxTeaVMVersion"
+}

@@ -1,0 +1,22 @@
+eclipse.project.name = appName + '-ios'
+
+apply plugin: "java-library"
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+java {
+  sourceCompatibility = JavaVersion.VERSION_17
+  targetCompatibility = JavaVersion.VERSION_17
+}
+
+ext {
+  roboVMVersion = "2.3.22"
+}
+
+dependencies {
+  api project(":core")
+  api "com.badlogicgames.gdx:gdx-backend-robovm:$gdxVersion"
+  api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-ios"
+  api "com.mobidevelop.robovm:robovm-rt:$roboVMVersion"
+  api "com.mobidevelop.robovm:robovm-cocoatouch:$roboVMVersion"
+}

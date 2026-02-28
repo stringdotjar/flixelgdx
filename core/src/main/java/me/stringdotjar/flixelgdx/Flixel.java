@@ -11,7 +11,7 @@ import games.rednblack.miniaudio.MASound;
 import games.rednblack.miniaudio.MiniAudio;
 import games.rednblack.miniaudio.loader.MASoundLoader;
 import me.stringdotjar.flixelgdx.util.FlixelPathsUtil;
-import me.stringdotjar.flixelgdx.backend.Alerter;
+import me.stringdotjar.flixelgdx.backend.FlixelAlerter;
 import me.stringdotjar.flixelgdx.display.FlixelCamera;
 import me.stringdotjar.flixelgdx.display.FlixelState;
 import me.stringdotjar.flixelgdx.logging.FlixelLogMode;
@@ -55,7 +55,7 @@ public final class Flixel {
   private static FlixelGame game;
 
   /** The system to use for displaying alert notifications to the user. */
-  private static Alerter alerter;
+  private static FlixelAlerter alerter;
 
   /** Has the global manager been initialized yet? */
   private static boolean initialized = false;
@@ -73,7 +73,7 @@ public final class Flixel {
    * @param alertSystem The system to use for displaying alert notifications to the user.
    * @throws IllegalStateException If Flixel has already been initialized.
    */
-  public static void initialize(@NotNull FlixelGame gameInstance, @NotNull Alerter alertSystem) {
+  public static void initialize(@NotNull FlixelGame gameInstance, @NotNull FlixelAlerter alertSystem) {
     if (initialized) {
       throw new IllegalStateException("Flixel has already been initialized!");
     }
@@ -415,7 +415,7 @@ public final class Flixel {
     defaultLogger.setDefaultTag(tag);
   }
 
-  public static Alerter getAlerter() {
+  public static FlixelAlerter getAlerter() {
     return alerter;
   }
 

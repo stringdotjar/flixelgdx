@@ -44,7 +44,7 @@ allprojects {
   }
 }
 
-configure(subprojects.findAll { !it.path.contains('android') }) {
+configure(subprojects.findAll { p -> !p.path.contains('android') && !p.path.contains('ios') && !p.path.contains('teavm') }) {
   apply plugin: 'java-library'
   java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -82,6 +82,7 @@ subprojects {
   ext.appName = 'flixelgdx'
   repositories {
     mavenCentral()
+    gradlePluginPortal()
     maven { url 'https://s01.oss.sonatype.org' }
     // You may want to remove the following line if you have errors downloading dependencies.
     mavenLocal()
