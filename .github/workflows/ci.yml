@@ -25,7 +25,7 @@ jobs:
           - os: macos-latest
             platform: ios
           - os: ubuntu-latest
-            platform: teavm
+            platform: web
     steps:
       - name: Checkout
         uses: actions/checkout@v4
