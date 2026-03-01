@@ -4,7 +4,6 @@ import com.badlogic.gdx.files.FileHandle;
 
 import me.stringdotjar.flixelgdx.util.FlixelConstants;
 import me.stringdotjar.flixelgdx.util.FlixelRuntimeUtil;
-import org.jetbrains.annotations.NotNull;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -13,7 +12,7 @@ import java.util.function.Consumer;
 /**
  * Logger instance for Flixel that formats and outputs log messages to the console and optionally
  * to a file. Console output respects the current {@link FlixelLogMode}; file output always uses
- * detailed format.
+ * a detailed format.
  */
 public class FlixelLogger {
 
@@ -28,6 +27,9 @@ public class FlixelLogger {
 
   /** Callback for when a log message is written to the file. */
   private Consumer<String> fileLineConsumer;
+
+  /** Provider for collecting stack trace information for the logger. */
+  private FlixelStackTraceProvider stackTraceProvider;
 
   /**
    * Creates a logger that outputs to the console and a file.
@@ -46,9 +48,23 @@ public class FlixelLogger {
    * @param fileLineConsumer Callback for when a log message is written to the file.
    */
   public FlixelLogger(FileHandle logFileLocation, FlixelLogMode logMode, Consumer<String> fileLineConsumer) {
+    this(logFileLocation, logMode, fileLineConsumer, null);
+  }
+
+  /**
+   * Creates a logger with an optional log file location, optional consumer for file lines, and
+   * a custom stack trace provider.
+   *
+   * @param logFileLocation Where the log file is stored (which might be null).
+   * @param logMode The mode used for console output.
+   * @param fileLineConsumer Callback for when a log message is written to the file.
+   * @param stackTraceProvider Provider for collecting stack trace information for the logger.
+   */
+  public FlixelLogger(FileHandle logFileLocation, FlixelLogMode logMode, Consumer<String> fileLineConsumer, FlixelStackTraceProvider stackTraceProvider) {
     this.logFileLocation = logFileLocation;
     this.logMode = logMode != null ? logMode : FlixelLogMode.SIMPLE;
     this.fileLineConsumer = fileLineConsumer;
+    this.stackTraceProvider = stackTraceProvider;
   }
 
   public FileHandle getLogFileLocation() {
@@ -73,6 +89,14 @@ public class FlixelLogger {
 
   public void setFileLineConsumer(Consumer<String> fileLineConsumer) {
     this.fileLineConsumer = fileLineConsumer;
+  }
+
+  public FlixelStackTraceProvider getStackTraceProvider() {
+    return stackTraceProvider;
+  }
+
+  public void setStackTraceProvider(FlixelStackTraceProvider stackTraceProvider) {
+    this.stackTraceProvider = stackTraceProvider;
   }
 
   public void info(Object message) {
@@ -113,21 +137,25 @@ public class FlixelLogger {
    * file line consumer is set, passes the detailed (plain) line for file output.
    */
   protected void outputLog(String tag, Object message, FlixelLogLevel level) {
-    StackWalker.StackFrame caller = getCaller();
+    FlixelStackFrame caller = getCaller();
 
-    String file = "UnknownFile.java:0";
-    String simpleFile = "UnknownFile.java:0";
-    String method = "unknownMethod()";
-    if (caller != null) {
-      file = caller.getFileName() + ":" + caller.getLineNumber();
-      String className = caller.getClassName();
-      int lastDot = className.lastIndexOf('.');
-      String packagePath = (lastDot > 0) ? className.substring(0, lastDot).replace('.', '/') : "";
-      simpleFile = packagePath.isEmpty()
-        ? caller.getFileName() + ":" + caller.getLineNumber()
-        : packagePath + "/" + caller.getFileName() + ":" + caller.getLineNumber();
-      method = caller.getMethodName() + "()";
+    if (caller == null) {
+      return;
     }
+
+    String file;
+    String simpleFile;
+    String method;
+
+    file = (caller.getFileName() != null ? caller.getFileName() : "UnknownFile.java") + ":" + caller.getLineNumber();
+    String className = caller.getClassName();
+    int lastDot = className != null ? className.lastIndexOf('.') : -1;
+    String packagePath = (lastDot > 0) ? className.substring(0, lastDot).replace('.', '/') : "";
+
+    simpleFile = packagePath.isEmpty()
+      ? (caller.getFileName() != null ? caller.getFileName() : "UnknownFile.java") + ":" + caller.getLineNumber()
+      : packagePath + "/" + (caller.getFileName() != null ? caller.getFileName() : "UnknownFile.java") + ":" + caller.getLineNumber();
+    method = (caller.getMethodName() != null ? caller.getMethodName() : "unknownMethod") + "()";
 
     String rawMessage = (message != null) ? message.toString() : "null";
     String color = switch (level) {
@@ -177,23 +205,8 @@ public class FlixelLogger {
    *
    * @return The location of where the log was called from.
    */
-  protected StackWalker.StackFrame getCaller() {
-    // TODO: Make this work for TeaVM, as call stacks aren't supported for web builds/TeaVM!
-    return StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
-      .walk(frames -> frames.filter(f -> {
-          // Filter packages to not log.
-          String pkg = f.getDeclaringClass().getPackageName();
-          if (pkg.startsWith(FlixelRuntimeUtil.getLibraryRoot())) return false; // Do not include FlixelGDX logs.
-          if (pkg.startsWith("org.codehaus.groovy.")) return false;
-          if (pkg.startsWith("groovy.lang.")) return false;
-          if (pkg.contains("$_run_closure")) return false;
-          if (pkg.contains("$$Lambda$")) return false;
-          if (pkg.startsWith("sun.reflect.") || pkg.startsWith("java.lang.reflect.")) return false;
-          return true;
-        })
-        .findFirst()
-      )
-      .orElse(null);
+  protected FlixelStackFrame getCaller() {
+    return (stackTraceProvider != null) ? stackTraceProvider.getCaller() : null;
   }
 
   /**
@@ -220,7 +233,7 @@ public class FlixelLogger {
     return defaultTag;
   }
 
-  public void setDefaultTag(@NotNull String defaultTag) {
+  public void setDefaultTag(String defaultTag) {
     this.defaultTag = defaultTag;
   }
 }

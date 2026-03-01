@@ -5,6 +5,7 @@ import com.badlogic.gdx.backends.iosrobovm.IOSApplicationConfiguration;
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelGame;
 import me.stringdotjar.flixelgdx.backend.ios.alert.FlixelIOSAlerter;
+import me.stringdotjar.flixelgdx.backend.jvm.logging.FlixelDefaultStackTraceProvider;
 
 /**
  * Launches the iOS (RoboVM) version of the FlixelGDX game.
@@ -40,7 +41,7 @@ public class FlixelIOSLauncher {
    * @return The configured {@link IOSApplication} to return from {@code createApplication()}.
    */
   public static IOSApplication launch(FlixelGame game) {
-    Flixel.initialize(game, new FlixelIOSAlerter());
+    Flixel.initialize(game, new FlixelIOSAlerter(), new FlixelDefaultStackTraceProvider());
 
     IOSApplicationConfiguration configuration = new IOSApplicationConfiguration();
     configuration.preventScreenDimming = false;

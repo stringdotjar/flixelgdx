@@ -10,6 +10,7 @@ import games.rednblack.miniaudio.MAGroup;
 import games.rednblack.miniaudio.MASound;
 import games.rednblack.miniaudio.MiniAudio;
 import games.rednblack.miniaudio.loader.MASoundLoader;
+import me.stringdotjar.flixelgdx.logging.FlixelStackTraceProvider;
 import me.stringdotjar.flixelgdx.util.FlixelPathsUtil;
 import me.stringdotjar.flixelgdx.backend.FlixelAlerter;
 import me.stringdotjar.flixelgdx.display.FlixelCamera;
@@ -71,9 +72,12 @@ public final class Flixel {
    *
    * @param gameInstance The instance of the game to use.
    * @param alertSystem The system to use for displaying alert notifications to the user.
+   * @param stackTraceProvider The system to use for providing stack traces on logs.
    * @throws IllegalStateException If Flixel has already been initialized.
    */
-  public static void initialize(@NotNull FlixelGame gameInstance, @NotNull FlixelAlerter alertSystem) {
+  public static void initialize(@NotNull FlixelGame gameInstance,
+                                @NotNull FlixelAlerter alertSystem,
+                                @NotNull FlixelStackTraceProvider stackTraceProvider) {
     if (initialized) {
       throw new IllegalStateException("Flixel has already been initialized!");
     }

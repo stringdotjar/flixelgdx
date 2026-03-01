@@ -5,6 +5,7 @@ import com.github.xpenatan.gdx.teavm.backends.web.WebApplicationConfiguration;
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelGame;
 import me.stringdotjar.flixelgdx.backend.teavm.alert.FlixelTeaVMAlerter;
+import me.stringdotjar.flixelgdx.backend.teavm.logging.TeaVMStackTraceProvider;
 
 /**
  * Launches the web (TeaVM) version of the FlixelGDX game.
@@ -33,7 +34,7 @@ public class FlixelTeaVMLauncher {
    * @param game The game instance to launch (e.g. {@code new MyGame(...)}).
    */
   public static void launch(FlixelGame game) {
-    Flixel.initialize(game, new FlixelTeaVMAlerter());
+    Flixel.initialize(game, new FlixelTeaVMAlerter(), new TeaVMStackTraceProvider());
 
     WebApplicationConfiguration configuration = new WebApplicationConfiguration();
     configuration.canvasID = "flixelgdx-canvas";

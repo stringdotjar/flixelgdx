@@ -4,7 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
 /**
- * Utility class for obtaining Git information about the current repository Flixel is being ran in.
+ * Utility class for obtaining Git information about the current repository Flixel is being run in.
  */
 public final class FlixelGitUtil {
 

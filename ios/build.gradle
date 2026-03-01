@@ -1,6 +1,6 @@
-eclipse.project.name = appName + '-ios'
-
 apply plugin: "java-library"
+
+eclipse.project.name = appName + '-ios'
 
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
@@ -14,7 +14,6 @@ ext {
 }
 
 dependencies {
-  api project(":core")
   api "com.badlogicgames.gdx:gdx-backend-robovm:$gdxVersion"
   api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-ios"
   api "com.mobidevelop.robovm:robovm-rt:$roboVMVersion"
