@@ -2,6 +2,7 @@ package me.stringdotjar.flixelgdx.logging;
 
 import com.badlogic.gdx.files.FileHandle;
 
+import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.util.FlixelConstants;
 import me.stringdotjar.flixelgdx.util.FlixelRuntimeUtil;
 
@@ -41,30 +42,18 @@ public class FlixelLogger {
   }
 
   /**
-   * Creates a logger with an optional log file location and optional consumer for file lines.
-   *
-   * @param logFileLocation Where the log file is stored (which might be null).
-   * @param logMode The mode used for console output.
-   * @param fileLineConsumer Callback for when a log message is written to the file.
-   */
-  public FlixelLogger(FileHandle logFileLocation, FlixelLogMode logMode, Consumer<String> fileLineConsumer) {
-    this(logFileLocation, logMode, fileLineConsumer, null);
-  }
-
-  /**
    * Creates a logger with an optional log file location, optional consumer for file lines, and
    * a custom stack trace provider.
    *
    * @param logFileLocation Where the log file is stored (which might be null).
    * @param logMode The mode used for console output.
    * @param fileLineConsumer Callback for when a log message is written to the file.
-   * @param stackTraceProvider Provider for collecting stack trace information for the logger.
    */
-  public FlixelLogger(FileHandle logFileLocation, FlixelLogMode logMode, Consumer<String> fileLineConsumer, FlixelStackTraceProvider stackTraceProvider) {
+  public FlixelLogger(FileHandle logFileLocation, FlixelLogMode logMode, Consumer<String> fileLineConsumer) {
     this.logFileLocation = logFileLocation;
     this.logMode = logMode != null ? logMode : FlixelLogMode.SIMPLE;
     this.fileLineConsumer = fileLineConsumer;
-    this.stackTraceProvider = stackTraceProvider;
+    this.stackTraceProvider = Flixel.getStackTraceProvider();
   }
 
   public FileHandle getLogFileLocation() {
@@ -147,16 +136,20 @@ public class FlixelLogger {
     String simpleFile;
     String method;
 
+    // Convert the package path and replace the periods (.) with slashes (/)
+    // to replicate the familiar Haxe tracing.
     file = (caller.getFileName() != null ? caller.getFileName() : "UnknownFile.java") + ":" + caller.getLineNumber();
     String className = caller.getClassName();
     int lastDot = className != null ? className.lastIndexOf('.') : -1;
     String packagePath = (lastDot > 0) ? className.substring(0, lastDot).replace('.', '/') : "";
 
+    // Assemble the log location and concatenate it together.
     simpleFile = packagePath.isEmpty()
       ? (caller.getFileName() != null ? caller.getFileName() : "UnknownFile.java") + ":" + caller.getLineNumber()
       : packagePath + "/" + (caller.getFileName() != null ? caller.getFileName() : "UnknownFile.java") + ":" + caller.getLineNumber();
-    method = (caller.getMethodName() != null ? caller.getMethodName() : "unknownMethod") + "()";
+    method = (caller.getMethodName() != null ? caller.getMethodName() : "unknownMethod") + "()"; // For detailed mode only.
 
+    // Apply the color and underlining based on the level.
     String rawMessage = (message != null) ? message.toString() : "null";
     String color = switch (level) {
       case INFO -> FlixelConstants.AsciiCodes.WHITE;

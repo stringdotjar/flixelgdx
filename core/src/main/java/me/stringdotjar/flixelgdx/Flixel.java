@@ -40,8 +40,11 @@ public final class Flixel {
   /** The main audio object used to create, */
   private static MiniAudio engine;
 
-  /** The global asset manager used to obtain preloaded assets. */
+  /** The global asset manager used to preload and cache assets. */
   private static AssetManager assetManager;
+
+  /** Should the game use antialiasing globally? */
+  private static boolean antialiasing = false;
 
   /** The audio group for all sound effects, including the current music. */
   private static MAGroup soundsGroup;
@@ -64,6 +67,9 @@ public final class Flixel {
   /** The default logger used by {@link #info}, {@link #warn}, and {@link #error}. */
   private static FlixelLogger defaultLogger;
 
+  /** System used to detect where a log come froms when a log is created. **/
+  private static FlixelStackTraceProvider stackTraceProvider;
+
   /**
    * Initializes the global manager.
    *
@@ -72,17 +78,19 @@ public final class Flixel {
    *
    * @param gameInstance The instance of the game to use.
    * @param alertSystem The system to use for displaying alert notifications to the user.
-   * @param stackTraceProvider The system to use for providing stack traces on logs.
+   * @param stackTraceProviderSystem The system to use for providing stack traces on logs.
    * @throws IllegalStateException If Flixel has already been initialized.
    */
   public static void initialize(@NotNull FlixelGame gameInstance,
                                 @NotNull FlixelAlerter alertSystem,
-                                @NotNull FlixelStackTraceProvider stackTraceProvider) {
+                                @NotNull FlixelStackTraceProvider stackTraceProviderSystem) {
     if (initialized) {
       throw new IllegalStateException("Flixel has already been initialized!");
     }
     game = gameInstance;
     alerter = alertSystem;
+    stackTraceProvider = stackTraceProviderSystem;
+    defaultLogger = new FlixelLogger(FlixelLogMode.SIMPLE);
 
     assetManager = new AssetManager();
 
@@ -91,7 +99,6 @@ public final class Flixel {
     soundsGroup = engine.createGroup();
     assetManager.setLoader(MASound.class, new MASoundLoader(engine, assetManager.getFileHandleResolver()));
 
-    defaultLogger = new FlixelLogger(FlixelLogMode.SIMPLE);
     initialized = true;
   }
 
@@ -491,6 +498,10 @@ public final class Flixel {
     return Gdx.app.getType();
   }
 
+  public static FlixelStackTraceProvider getStackTraceProvider() {
+    return stackTraceProvider;
+  }
+
   public static String getVersion() {
     try (InputStream in = Flixel.class.getResourceAsStream("version.properties")) {
       if (in != null) {
@@ -505,6 +516,33 @@ public final class Flixel {
 
   public static void setLogMode(@NotNull FlixelLogMode mode) {
     defaultLogger.setLogMode(mode);
+  }
+
+  public static boolean globalAntialiasing() {
+    return antialiasing;
+  }
+
+  public static void setAntialiasing(boolean enabled) {
+    if (enabled == antialiasing) {
+      return;
+    }
+    antialiasing = enabled;
+
+    if (state == null) {
+      return;
+    }
+
+    var members = state.getMembers();
+    var mbrs = members.begin();
+    for (int i = 0; i < members.size; i++) {
+      var member = mbrs[i];
+      if (member == null) {
+        continue;
+      }
+      if (member instanceof FlixelSprite sprite) {
+        sprite.setAntialiasing(enabled);
+      }
+    }
   }
 
   /**

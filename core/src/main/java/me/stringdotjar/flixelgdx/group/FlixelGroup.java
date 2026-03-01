@@ -8,7 +8,7 @@ import me.stringdotjar.flixelgdx.FlixelBasic;
 import java.util.function.Consumer;
 
 /**
- * Base class for creating groups with a list of members inside of it.
+ * Base class for creating groups with a list of members inside it.
  */
 public abstract class FlixelGroup<T extends FlixelBasic> extends FlixelBasic implements FlixelGroupable<T> {
 

@@ -4,8 +4,11 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 
+import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelBasic;
+import me.stringdotjar.flixelgdx.FlixelSprite;
 import me.stringdotjar.flixelgdx.group.FlixelGroup;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Base class for creating a better screen display with more functionality than the default {@link
@@ -59,16 +62,20 @@ public abstract class FlixelState extends FlixelGroup<FlixelBasic> implements Sc
   /**
    * Updates the logic of {@code this} state.
    *
-   * @param delta The amount of time that occurred since the last frame.
+   * @param delta The amount of time that's occurred since the last frame.
    */
-  public void update(float delta) {}
+  public void update(float delta) {
+    super.update(delta);
+  }
 
   /**
    * Draws {@code this} state's members onto the screen.
    *
    * @param batch The batch that's used to draw {@code this} state's members.
    */
-  public void draw(Batch batch) {}
+  public void draw(Batch batch) {
+    super.draw(batch);
+  }
 
   /**
    * Opens a {@link FlixelSubState} on top of {@code this} state. If there is already
@@ -177,14 +184,15 @@ public abstract class FlixelState extends FlixelGroup<FlixelBasic> implements Sc
   }
 
   /**
-   * Adds a new object to {@code this} state. If it is {@code null}, it will not be added and
-   * simply ignored.
+   * Adds a new object to {@code this} state.
    *
-   * @param object The object to add to the state.
+   * @param basic The object to add to the state.
    */
-  public void add(FlixelBasic object) {
-    if (object != null) {
-      members.add(object);
+  public void add(@NotNull FlixelBasic basic) {
+    members.add(basic);
+
+    if (basic instanceof FlixelSprite sprite) {
+      sprite.setAntialiasing(Flixel.globalAntialiasing());
     }
   }
 

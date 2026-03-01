@@ -8,7 +8,21 @@ package me.stringdotjar.flixelgdx.util;
 public final class FlixelConstants {
 
   /**
-   * Holds ASCII color code constants for text in the console.
+   * Values for graphics throughout the game.
+   */
+  public static final class Graphics {
+
+    // For sprite facing directions.
+    public static final int FACING_LEFT = 0x0001;
+    public static final int FACING_RIGHT = 0x0010;
+    public static final int FACING_UP = 0x0100;
+    public static final int FACING_DOWN = 0x1000;
+
+    private Graphics() {}
+  }
+
+  /**
+   * ASCII color code constants for text in the console.
    */
   public static final class AsciiCodes {
 
