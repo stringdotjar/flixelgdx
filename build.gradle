@@ -44,13 +44,32 @@ allprojects {
   }
 }
 
-configure(subprojects.findAll { p -> !p.path.contains('android') && !p.path.contains('ios') && !p.path.contains('teavm') }) {
+configure(subprojects.findAll { p -> p.name == 'core' || p.name == 'jvm' }) {
   apply plugin: 'java-library'
   java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
   }
+}
 
+// These modules are currently NOT configured in the root build.gradle for java-library
+// but they apply it themselves.
+
+configure(subprojects.findAll { p -> p.name != 'core' }) {
+  afterEvaluate {
+    if (it.plugins.hasPlugin('java-library') || it.plugins.hasPlugin('com.android.library')) {
+      dependencies {
+        api rootProject.project(':core')
+      }
+    } else if (it.plugins.hasPlugin('java')) {
+      dependencies {
+        implementation rootProject.project(':core')
+      }
+    }
+  }
+}
+
+configure(subprojects.findAll { !it.path.contains('android') }) {
   // From https://lyze.dev/2021/04/29/libGDX-Internal-Assets-List/
   // The article can be helpful when using assets.txt in your project.
   tasks.register('generateAssetList') {
@@ -73,6 +92,20 @@ configure(subprojects.findAll { p -> !p.path.contains('android') && !p.path.cont
 
   compileJava {
     options.incremental = true
+  }
+}
+
+configure(subprojects.findAll { p -> p.name != 'core' && p.name != 'jvm' && p.name != 'teavm' }) {
+  afterEvaluate {
+    if (it.plugins.hasPlugin('java-library') || it.plugins.hasPlugin('com.android.library')) {
+      dependencies {
+        api rootProject.project(':jvm')
+      }
+    } else if (it.plugins.hasPlugin('java')) {
+      dependencies {
+        implementation rootProject.project(':jvm')
+      }
+    }
   }
 }
 
@@ -106,3 +139,12 @@ subprojects {
 }
 
 eclipse.project.name = 'flixelgdx' + '-parent'
+
+subprojects {
+  if (project.plugins.hasPlugin('java-library') || project.plugins.hasPlugin('java')) {
+    processResources.dependsOn 'generateAssetList'
+    compileJava {
+      options.incremental = true
+    }
+  }
+}

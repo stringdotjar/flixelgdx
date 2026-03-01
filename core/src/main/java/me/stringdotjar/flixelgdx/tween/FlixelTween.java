@@ -116,9 +116,12 @@ public class FlixelTween implements Pool.Poolable {
   /**
    * Updates {@code this} tween by the given delta time.
    *
-   * @param elapsed How much time has passed since the last update.
+   * <p>If you wish to change how a tween's values are updated, then consider looking at
+   * {@link FlixelTween#updateTweenValues}
+   *
+   * @param elapsed The amount of time that has passed since the last update.
    */
-  public void update(float elapsed) {
+  public final void update(float elapsed) {
     if (paused || finished || !running || manager == null) {
       return;
     }

@@ -3,6 +3,7 @@ package me.stringdotjar.flixelgdx.tween.settings;
 import com.badlogic.gdx.utils.Array;
 import me.stringdotjar.flixelgdx.tween.FlixelTween;
 import me.stringdotjar.flixelgdx.tween.FlixelEase;
+import me.stringdotjar.flixelgdx.tween.type.FlixelVarTween;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -82,7 +83,7 @@ public class FlixelTweenSettings {
    * @param setter Consumes the interpolated value on every tween update.
    * @return {@code this} tween settings object for chaining.
    */
-  public FlixelTweenSettings addPropertyGoal(@NotNull FlixelTweenPropertyGoal.FlixelTweenPropertyFloatGetter getter, float toValue, @NotNull FlixelTweenPropertyGoal.FlixelTweenPropertyFloatSetter setter) {
+  public FlixelTweenSettings addGoal(@NotNull FlixelTweenPropertyGoal.FlixelTweenPropertyFloatGetter getter, float toValue, @NotNull FlixelTweenPropertyGoal.FlixelTweenPropertyFloatSetter setter) {
     propertyGoals.add(new FlixelTweenPropertyGoal(getter, toValue, setter));
     return this;
   }

@@ -1,0 +1,15 @@
+plugins {
+    id 'java-library'
+}
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-jvm'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+dependencies {
+    api project(':core')
+}

@@ -5,6 +5,7 @@ import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelGame;
 import me.stringdotjar.flixelgdx.backend.android.alert.FlixelAndroidAlerter;
+import me.stringdotjar.flixelgdx.backend.jvm.logging.FlixelDefaultStackTraceProvider;
 
 /**
  * Launches the Android version of the FlixelGDX game.
@@ -26,7 +27,7 @@ public class FlixelAndroidLauncher {
    * @param activity The Android application activity (must extend {@link AndroidApplication}).
    */
   public static void launch(FlixelGame game, AndroidApplication activity) {
-    Flixel.initialize(game, new FlixelAndroidAlerter(activity));
+    Flixel.initialize(game, new FlixelAndroidAlerter(activity), new FlixelDefaultStackTraceProvider());
 
     AndroidApplicationConfiguration configuration = new AndroidApplicationConfiguration();
     configuration.useImmersiveMode = true;

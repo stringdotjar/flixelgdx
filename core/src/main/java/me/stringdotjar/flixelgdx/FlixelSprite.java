@@ -100,11 +100,13 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
    */
   @Override
   public void update(float delta) {
-    Animation<TextureRegion> anim = animations.get(currentAnim);
-    if (anim != null) {
-      stateTime += delta;
-      currentFrame = (TextureAtlas.AtlasRegion) anim.getKeyFrame(stateTime, looping);
-      currentRegion = currentFrame;
+    if (animations != null && !animations.isEmpty()) {
+      Animation<TextureRegion> anim = animations.get(currentAnim);
+      if (anim != null) {
+        stateTime += delta;
+        currentFrame = (TextureAtlas.AtlasRegion) anim.getKeyFrame(stateTime, looping);
+        currentRegion = currentFrame;
+      }
     }
   }
 
@@ -391,16 +393,16 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
     }
   }
 
-  public float getScaleX() { 
-    return scaleX; 
+  public float getScaleX() {
+    return scaleX;
   }
 
-  public float getScaleY() { 
-    return scaleY; 
+  public float getScaleY() {
+    return scaleY;
   }
 
-  public void setScale(float scaleXY) { 
-    scaleX = scaleY = scaleXY; 
+  public void setScale(float scaleXY) {
+    scaleX = scaleY = scaleXY;
   }
 
   public void setScale(float scaleX, float scaleY) {
@@ -408,12 +410,12 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
     this.scaleY = scaleY;
   }
 
-  public float getOriginX() { 
-    return originX; 
+  public float getOriginX() {
+    return originX;
   }
 
-  public float getOriginY() { 
-    return originY; 
+  public float getOriginY() {
+    return originY;
   }
 
   public void setOrigin(float originX, float originY) {
@@ -426,20 +428,20 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
     originY = height / 2f;
   }
 
-  public Color getColor() { 
-    return color; 
+  public Color getColor() {
+    return color;
   }
 
-  public void setColor(Color tint) { 
-    color.set(tint); 
+  public void setColor(Color tint) {
+    color.set(tint);
   }
 
-  public void setColor(float r, float g, float b, float a) { 
-    color.set(r, g, b, a); 
+  public void setColor(float r, float g, float b, float a) {
+    color.set(r, g, b, a);
   }
 
-  public void setAlpha(float a) { 
-    color.a = a; 
+  public void setAlpha(float a) {
+    color.a = a;
   }
 
   public void flip(boolean x, boolean y) {
@@ -447,28 +449,28 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
     flipY ^= y;
   }
 
-  public boolean isFlipX() { 
-    return flipX; 
+  public boolean isFlipX() {
+    return flipX;
   }
 
-  public boolean isFlipY() { 
-    return flipY; 
+  public boolean isFlipY() {
+    return flipY;
   }
 
-  public void setRegion(TextureRegion region) { 
-    currentRegion = region; 
+  public void setRegion(TextureRegion region) {
+    currentRegion = region;
   }
 
-  public TextureRegion getRegion() { 
-    return currentRegion; 
+  public TextureRegion getRegion() {
+    return currentRegion;
   }
 
-  public int getRegionWidth() { 
-    return currentRegion != null ? currentRegion.getRegionWidth() : 0; 
+  public int getRegionWidth() {
+    return currentRegion != null ? currentRegion.getRegionWidth() : 0;
   }
 
-  public int getRegionHeight() { 
-    return currentRegion != null ? currentRegion.getRegionHeight() : 0; 
+  public int getRegionHeight() {
+    return currentRegion != null ? currentRegion.getRegionHeight() : 0;
   }
 
   public ObjectMap<String, Animation<TextureRegion>> getAnimations() {

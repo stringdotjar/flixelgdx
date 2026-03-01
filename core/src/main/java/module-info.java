@@ -12,7 +12,7 @@ module me.stringdotjar.flixelgdx.core {
   exports me.stringdotjar.flixelgdx.tween.type;
   exports me.stringdotjar.flixelgdx.util;
 
-  // Automatic module names (from JAR filenames when on module path).
+  // Automatic module names (from JAR filenames when on the module path).
   requires transitive gdx;
   requires transitive gdx.freetype;
   requires transitive anim8.gdx;

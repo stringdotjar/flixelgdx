@@ -9,8 +9,8 @@ import me.stringdotjar.flixelgdx.tween.settings.FlixelTweenSettings;
 /**
  * Tween type for animating values via getter/setter pairs (property goals) rather than
  * reflection. Use this when you need setter side effects (e.g. bounds updates, listeners) to
- * run on every interpolated step. Configure with {@link FlixelTweenSettings#addPropertyGoal}.
- * 
+ * run on every interpolated step. Configure with {@link FlixelTweenSettings#addGoal}.
+ *
  * <p>Note that this is faster than {@link FlixelVarTween} since it does not use reflection to access the fields.
  * It is recommended to use this when you need setter side effects (e.g. bounds updates, listeners) to
  * run on every interpolated step, the {@code FlixelVarTween} type is there for convenience.
@@ -31,7 +31,7 @@ public class FlixelPropertyTween extends FlixelTween {
 
   /**
    * Constructs a new property tween with the given settings. Property goals must be added via
-   * {@link FlixelTweenSettings#addPropertyGoal} before starting.
+   * {@link FlixelTweenSettings#addGoal} before starting.
    *
    * @param settings The settings that configure and determine how the tween should animate.
    */

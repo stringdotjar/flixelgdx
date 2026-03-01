@@ -38,7 +38,7 @@ eclipse.classpath.file {
 }
 
 // Avoid JPMS split-package error: gdx and gdx-jnigen-loader both expose com.badlogic.gdx.utils.
-configurations.all {
+configurations.configureEach {
   exclude group: 'com.badlogicgames.gdx', module: 'gdx-jnigen-loader'
 }
 

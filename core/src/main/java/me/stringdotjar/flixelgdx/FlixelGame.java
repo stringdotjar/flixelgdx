@@ -26,6 +26,7 @@ import static me.stringdotjar.flixelgdx.signal.FlixelSignalData.UpdateSignalData
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -324,7 +325,7 @@ public abstract class FlixelGame implements ApplicationListener {
       batch.begin();
 
       // Walk the state/substate chain. Each state is drawn only if it is the
-      // active (innermost) state, or if its persistentDraw flag is true.
+      // active (innermost) state or if its persistentDraw flag is true.
       FlixelState current = state;
       while (current != null) {
         FlixelState sub = current.getSubState();
@@ -539,8 +540,8 @@ public abstract class FlixelGame implements ApplicationListener {
       // We prune when count >= maxLogFiles so that after creating this run's log we have at most maxLogFiles.
       FileHandle[] logFiles = Gdx.files.absolute(logsFolder).list();
       if (logFiles != null && logFiles.length >= maxLogFiles) {
-        // Sort by name so we delete oldest first (flixel-yyyy-MM-dd_HH-mm-ss.log is lexicographically ordered).
-        Arrays.sort(logFiles, (a, b) -> a.name().compareTo(b.name()));
+        // Sort by name so we delete the oldest first (flixel-yyyy-MM-dd_HH-mm-ss.log is lexicographically ordered).
+        Arrays.sort(logFiles, Comparator.comparing(FileHandle::name));
         int toDelete = logFiles.length - maxLogFiles + 1;
         for (int i = 0; i < toDelete; i++) {
           logFiles[i].delete();
@@ -549,7 +550,7 @@ public abstract class FlixelGame implements ApplicationListener {
 
       FileHandle logFile = Gdx.files.absolute(logsFolder + "/flixel-" + date + ".log");
 
-      // Wire default logger (used by Flixel.info/warn/error) to also write to file.
+      // Wire the default logger (used by Flixel.info/warn/error) to also write to file.
       FlixelLogger defaultLogger = Flixel.getLogger();
       if (defaultLogger != null) {
         defaultLogger.setLogFileLocation(logFile);
