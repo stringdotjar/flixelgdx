@@ -9,6 +9,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.SnapshotArray;
 
 import me.stringdotjar.flixelgdx.FlixelSprite;
+import me.stringdotjar.flixelgdx.util.FlixelConstants;
 
 import java.util.Comparator;
 import java.util.Random;
@@ -57,6 +58,8 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelGroupable<F
 
   private RotationMode rotationMode = RotationMode.INDIVIDUAL;
   private boolean visible = true;
+  private boolean antialiasing = false;
+  private int facing = FlixelConstants.Graphics.FACING_RIGHT;
 
   /** Creates a new group with unlimited size, a default rotation radius of 100, and 0 rotation. */
   public FlixelSpriteGroup() {
@@ -91,7 +94,7 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelGroupable<F
   public void setX(float x) {
     float dx = x - getX();
     super.setX(x);
-    if (rotationMode != RotationMode.WHEEL) {
+    if (rotationMode != RotationMode.WHEEL && dx != 0) {
       transformMembersX(dx);
     }
   }
@@ -100,7 +103,7 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelGroupable<F
   public void setY(float y) {
     float dy = y - getY();
     super.setY(y);
-    if (rotationMode != RotationMode.WHEEL) {
+    if (rotationMode != RotationMode.WHEEL && dy != 0) {
       transformMembersY(dy);
     }
   }
@@ -110,14 +113,19 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelGroupable<F
     float dx = x - getX();
     float dy = y - getY();
     super.setPosition(x, y);
-    if (rotationMode != RotationMode.WHEEL) {
+    if (rotationMode != RotationMode.WHEEL && (dx != 0 || dy != 0)) {
       transformMembersPosition(dx, dy);
     }
   }
 
   @Override
-  public FlixelSprite loadGraphic(Texture texture, int frameWidth, int frameHeight) {
+  public final FlixelSprite loadGraphic(Texture texture, int frameWidth, int frameHeight) {
     throw new UnsupportedOperationException("Loading a texture for a group is not supported. Use add() instead.");
+  }
+
+  @Override
+  public final FlixelSprite makeGraphic(int width, int height, Color color) {
+    throw new UnsupportedOperationException("Creating a graphic for a group is not supported. Use add() instead.");
   }
 
   /**
@@ -138,15 +146,17 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelGroupable<F
     float delta = degrees - getAngle();
     super.setAngle(degrees);
 
-    switch (rotationMode) {
-      case INDIVIDUAL:
-        transformMembersIndividualRotation(delta);
-        break;
-      case ORBIT:
-        orbitMembersAroundCenter(delta);
-        break;
-      case WHEEL:
-        break;
+    if (delta != 0) {
+      switch (rotationMode) {
+        case INDIVIDUAL:
+          transformMembersIndividualRotation(delta);
+          break;
+        case ORBIT:
+          orbitMembersAroundCenter(delta);
+          break;
+        case WHEEL:
+          break;
+      }
     }
   }
 
@@ -262,6 +272,27 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelGroupable<F
     this.visible = visible;
   }
 
+  @Override
+  public void setAntialiasing(boolean antialiasing) {
+    this.antialiasing = antialiasing;
+    forEach(s -> s.setAntialiasing(antialiasing));
+  }
+
+  public boolean isAntialiasing() {
+    return antialiasing;
+  }
+
+  @Override
+  public int getFacing() {
+    return facing;
+  }
+
+  @Override
+  public void setFacing(int facing) {
+    this.facing = facing;
+    forEach(s -> s.setFacing(facing));
+  }
+
   /** Sets the rotation and scale pivot point on every current member. */
   @Override
   public void setOrigin(float originX, float originY) {
@@ -302,7 +333,7 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelGroupable<F
   /**
    * Inserts a sprite at the given index, offset by the group's current position. The
    * index is clamped to the valid range {@code [0, length]}.
-   * 
+   *
    * @param index The index to insert the sprite at.
    * @param sprite The sprite to insert.
    */
@@ -642,6 +673,8 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelGroupable<F
     sprite.setX(sprite.getX() + getX());
     sprite.setY(sprite.getY() + getY());
     sprite.setAlpha(sprite.getColor().a * getColor().a);
+    sprite.setAntialiasing(antialiasing);
+    sprite.setFacing(facing);
   }
 
   private void transformMembersX(float dx) {

@@ -216,7 +216,7 @@ public abstract class FlixelGame implements ApplicationListener {
     configureCrashHandler(); // This should ALWAYS be called first no matter what!
 
     // Install Jansi's ANSI-aware output stream so that ANSI color codes render correctly in
-    // terminals that don't natively support them (e.g. the Windows console). Skipped in the
+    // terminals that don't natively support them (e.g., the Windows terminal). Skipped in the
     // IDE because the IDE console already handles ANSI codes without Jansi's help.
     if (FlixelRuntimeUtil.isRunningFromJar()) {
       AnsiConsole.systemInstall();
@@ -266,7 +266,7 @@ public abstract class FlixelGame implements ApplicationListener {
     FlixelTween.getGlobalManager().update(elapsed);
 
     // Walk the state/substate chain. Each state in the chain is updated only
-    // if it is the active (innermost) state, or if its persistentUpdate flag is true.
+    // if it is the active (innermost) state or if its persistentUpdate flag is true.
     FlixelState current = Flixel.getState();
     while (current != null) {
       FlixelState sub = current.getSubState();
@@ -274,16 +274,6 @@ public abstract class FlixelGame implements ApplicationListener {
 
       if (!hasSubState || current.persistentUpdate) {
         current.update(elapsed);
-
-        SnapshotArray<FlixelBasic> members = current.getMembers();
-        FlixelBasic[] items = members.begin();
-        for (int j = 0; j < members.size; j++) {
-          FlixelBasic item = items[j];
-          if (item != null) {
-            item.update(elapsed);
-          }
-        }
-        members.end();
       }
 
       current = sub;
@@ -336,20 +326,7 @@ public abstract class FlixelGame implements ApplicationListener {
           batch.draw(bgTexture, camera.x, camera.y, camera.getWorldWidth(), camera.getWorldHeight());
           batch.setColor(Color.WHITE);
 
-          SnapshotArray<FlixelBasic> members = current.getMembers();
-          FlixelBasic[] mbrs = members.begin();
-          for (int j = 0; j < members.size; j++) {
-            FlixelBasic member = mbrs[j];
-            if (member == null) {
-              continue;
-            }
-            if (member instanceof FlixelObject m) {
-              if (camera.getCamera().frustum.boundsInFrustum(m.getX(), m.getY(), 0, m.getWidth(), m.getHeight(), 0)) {
-                m.draw(batch);
-              }
-            }
-          }
-          members.end();
+          current.draw(batch);
         }
 
         current = sub;
@@ -358,19 +335,6 @@ public abstract class FlixelGame implements ApplicationListener {
       batch.end();
     }
     cameras.end();
-
-    // Call user draw hooks for each state in the chain.
-    FlixelState drawHook = state;
-    while (drawHook != null) {
-      FlixelState sub = drawHook.getSubState();
-      boolean hasSubState = (sub != null);
-
-      if (!hasSubState || drawHook.persistentDraw) {
-        drawHook.draw(batch);
-      }
-
-      drawHook = sub;
-    }
 
     stage.draw();
 
@@ -447,7 +411,7 @@ public abstract class FlixelGame implements ApplicationListener {
   /**
    * Gets called when the game is closing to perform custom cleanup
    * after core resources are disposed and before the log thread shuts down, so any
-   * logs written here (e.g. via {@link Flixel#info}) are persisted to the log file.
+   * logs written here (e.g., via {@link Flixel#info}) are persisted to the log file.
    */
   protected void close() {}
 
@@ -537,7 +501,7 @@ public abstract class FlixelGame implements ApplicationListener {
       Gdx.files.absolute(logsFolder).mkdirs();
 
       // Check if the logs folder has too many log files, and if so, delete the oldest ones.
-      // We prune when count >= maxLogFiles so that after creating this run's log we have at most maxLogFiles.
+      // We prune when count >= maxLogFiles so that after creating this run's log, we have at most maxLogFiles.
       FileHandle[] logFiles = Gdx.files.absolute(logsFolder).list();
       if (logFiles != null && logFiles.length >= maxLogFiles) {
         // Sort by name so we delete the oldest first (flixel-yyyy-MM-dd_HH-mm-ss.log is lexicographically ordered).
@@ -550,7 +514,7 @@ public abstract class FlixelGame implements ApplicationListener {
 
       FileHandle logFile = Gdx.files.absolute(logsFolder + "/flixel-" + date + ".log");
 
-      // Wire the default logger (used by Flixel.info/warn/error) to also write to file.
+      // Wire the default logger (used by Flixel.info()/warn()/error()) to also write to the file.
       FlixelLogger defaultLogger = Flixel.getLogger();
       if (defaultLogger != null) {
         defaultLogger.setLogFileLocation(logFile);
@@ -579,7 +543,7 @@ public abstract class FlixelGame implements ApplicationListener {
               }
             }
           }
-        } catch (Exception e) {}
+        } catch (Exception ignored) {}
       });
       logThread.setName("FlixelGDX Log Thread");
       logThread.setDaemon(true);

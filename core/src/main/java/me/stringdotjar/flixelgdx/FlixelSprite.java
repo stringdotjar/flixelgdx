@@ -2,6 +2,7 @@ package me.stringdotjar.flixelgdx;
 
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.Batch;
@@ -16,6 +17,7 @@ import com.badlogic.gdx.utils.XmlReader;
 import me.stringdotjar.flixelgdx.display.FlixelCamera;
 
 import com.badlogic.gdx.utils.ObjectMap;
+import me.stringdotjar.flixelgdx.util.FlixelConstants;
 
 import java.util.Comparator;
 
@@ -23,7 +25,7 @@ import java.util.Comparator;
  * The core building block of all Flixel games. Extends {@link FlixelObject} with graphical
  * capabilities including texture rendering, animation, scaling, rotation, tinting, and flipping.
  *
- * <p>It is common to extend {@code FlixelSprite} for your own game's needs; for example a
+ * <p>It is common to extend {@code FlixelSprite} for your own game's needs; for example, a
  * {@code SpaceShip} class may extend {@code FlixelSprite} but add additional game-specific fields.
  *
  * @see <a href="https://api.haxeflixel.com/flixel/FlxSprite.html">FlxSprite (HaxeFlixel)</a>
@@ -78,6 +80,15 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
   /** Y component of the rotation/scale origin point. */
   protected float originY = 0f;
 
+  /** The offset from the sprite's position to its graphic. */
+  protected float offsetX = 0f;
+
+  /** The offset from the sprite's position to its graphic. */
+  protected float offsetY = 0f;
+
+  /** Whether this sprite is smoothed when scaled. */
+  protected boolean antialiasing = false;
+
   /** The color tint applied when drawing this sprite. */
   protected final Color color = new Color(Color.WHITE);
 
@@ -86,6 +97,12 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
 
   /** Whether this sprite is flipped vertically. */
   protected boolean flipY = false;
+
+  /**
+   * The direction this sprite is facing. LEFT, RIGHT, UP, DOWN.
+   * Useful for automatic flipping.
+   */
+  protected int facing = FlixelConstants.Graphics.FACING_RIGHT;
 
   public FlixelSprite() {
     super();
@@ -100,6 +117,10 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
    */
   @Override
   public void update(float delta) {
+    if (moves) {
+      updateMotion(delta);
+    }
+
     if (animations != null && !animations.isEmpty()) {
       Animation<TextureRegion> anim = animations.get(currentAnim);
       if (anim != null) {
@@ -146,11 +167,29 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
   }
 
   public FlixelSprite loadGraphic(Texture texture, int frameWidth, int frameHeight) {
+    this.texture = texture;
     frames = TextureRegion.split(texture, frameWidth, frameHeight);
     currentRegion = frames[0][0];
     setSize(frameWidth, frameHeight);
     setOriginCenter();
     return this;
+  }
+
+  /**
+   * Creates a solid color rectangular texture on the fly.
+   *
+   * @param width The width of the graphic.
+   * @param height The height of the graphic.
+   * @param color The color of the graphic.
+   * @return This sprite for chaining.
+   */
+  public FlixelSprite makeGraphic(int width, int height, Color color) {
+    Pixmap pixmap = new Pixmap(width, height, Pixmap.Format.RGBA8888);
+    pixmap.setColor(color);
+    pixmap.fill();
+    Texture texture = new Texture(pixmap);
+    pixmap.dispose();
+    return loadGraphic(texture, width, height);
   }
 
   /**
@@ -244,7 +283,7 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
   }
 
   /**
-   * Adds a new animation to the animations list, if it doesn't exist already.
+   * Adds a new animation to the animations list if it doesn't exist already.
    *
    * @param name The name of the animation. This is what you'll use every time you use {@code
    * playAnimation()}.
@@ -289,7 +328,7 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
    *
    * @param name The name of the animation to play.
    * @param loop Should this animation loop indefinitely?
-   * @param forceRestart Should the animation automatically restart regardless if its playing?
+   * @param forceRestart Should the animation automatically restart regardless if it's playing?
    */
   public void playAnimation(String name, boolean loop, boolean forceRestart) {
     if (currentAnim.equals(name) && !forceRestart) {
@@ -308,28 +347,40 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
       float oX = currentFrame.originalWidth / 2f;
       float oY = currentFrame.originalHeight / 2f;
 
-      float drawX = x + currentFrame.offsetX;
-      float drawY = y + (currentFrame.originalHeight - currentFrame.getRegionHeight() - currentFrame.offsetY);
+      float drawX = x - offsetX + currentFrame.offsetX;
+      float drawY = y - offsetY + (currentFrame.originalHeight - currentFrame.getRegionHeight() - currentFrame.offsetY);
+
+      boolean isFlippedX = flipX || (facing == FlixelConstants.Graphics.FACING_LEFT);
+      boolean isFlippedY = flipY;
 
       batch.setColor(color);
       batch.draw(
-        currentFrame,
+        currentFrame.getTexture(),
         drawX,
         drawY,
         oX - currentFrame.offsetX,
         oY - (currentFrame.originalHeight - currentFrame.getRegionHeight() - currentFrame.offsetY),
         currentFrame.getRegionWidth(),
         currentFrame.getRegionHeight(),
-        scaleX,
-        scaleY,
-        angle);
+        isFlippedX ? -scaleX : scaleX,
+        isFlippedY ? -scaleY : scaleY,
+        angle,
+        currentFrame.getRegionX(),
+        currentFrame.getRegionY(),
+        currentFrame.getRegionWidth(),
+        currentFrame.getRegionHeight(),
+        isFlippedX,
+        isFlippedY);
       batch.setColor(Color.WHITE);
     } else if (currentRegion != null) {
-      float sx = flipX ? -scaleX : scaleX;
-      float sy = flipY ? -scaleY : scaleY;
+      boolean isFlippedX = flipX || (facing == FlixelConstants.Graphics.FACING_LEFT);
+      boolean isFlippedY = flipY;
+
+      float sx = isFlippedX ? -scaleX : scaleX;
+      float sy = isFlippedY ? -scaleY : scaleY;
 
       batch.setColor(color);
-      batch.draw(currentRegion, x, y, originX, originY, width, height, sx, sy, angle);
+      batch.draw(currentRegion, x - offsetX, y - offsetY, originX, originY, width, height, sx, sy, angle);
       batch.setColor(Color.WHITE);
     }
   }
@@ -355,6 +406,9 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
     scaleY = 1f;
     originX = 0f;
     originY = 0f;
+    offsetX = 0f;
+    offsetY = 0f;
+    antialiasing = false;
     color.set(Color.WHITE);
     flipX = false;
     flipY = false;
@@ -426,6 +480,57 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
   public void setOriginCenter() {
     originX = width / 2f;
     originY = height / 2f;
+  }
+
+  public float getOffsetX() {
+    return offsetX;
+  }
+
+  public void setOffsetX(float offsetX) {
+    this.offsetX = offsetX;
+  }
+
+  public float getOffsetY() {
+    return offsetY;
+  }
+
+  public void setOffsetY(float offsetY) {
+    this.offsetY = offsetY;
+  }
+
+  public void setOffset(float x, float y) {
+    this.offsetX = x;
+    this.offsetY = y;
+  }
+
+  public boolean isAntialiasing() {
+    return antialiasing;
+  }
+
+  public void setAntialiasing(boolean antialiasing) {
+    this.antialiasing = antialiasing;
+    if (texture != null) {
+      texture.setFilter(
+        antialiasing ? Texture.TextureFilter.Linear : Texture.TextureFilter.Nearest,
+        antialiasing ? Texture.TextureFilter.Linear : Texture.TextureFilter.Nearest
+      );
+    }
+  }
+
+  public Texture getGraphic() {
+    return texture;
+  }
+
+  public void setGraphic(Texture texture) {
+    this.texture = texture;
+  }
+
+  public int getFacing() {
+    return facing;
+  }
+
+  public void setFacing(int facing) {
+    this.facing = facing;
   }
 
   public Color getColor() {
