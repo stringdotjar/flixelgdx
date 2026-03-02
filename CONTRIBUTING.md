@@ -6,8 +6,8 @@ We welcome contributions! Whether you're fixing bugs, adding new features, or im
 
 To maintain a stable code base, we follow a specific branching model:
 
-1. **The Develop Branch**: All pull requests must be made against the `develop` branch. Pull requests targeting the `master` (or `main`) branch will not be merged. 
-2. **Build Checks**: Your PR MUST pass all automated build checks. If the build fails, the PR will not be considered for merging until the issues are resolved.
+1. **The Develop Branch**: All pull requests must be made against the `develop` branch. Pull requests targeting the `master` branch will not be merged. 
+2. **Build Checks**: Your PR **MUST** pass all automated build checks. If the build fails, <u>**_the PR will not be considered for merging until the issues are resolved._**</u>
 3. **Commit Messages**: Keep commit messages concise and descriptive.
 
 ## Coding Standards
@@ -16,9 +16,10 @@ FlixelGDX aims to be a high-quality framework. Please follow these standards:
 
 ### Consistency
 
-- Match the existing project style exactly (indentation, bracket placement, etc.).
+- Match the existing project style exactly (indentation, bracket placement, etc.). We will be strict about this. We want to have a codebase that
+  looks like it was written by a single person. This will help us maintain a high-quality project and encourage contributions.
 - Use `final` for parameters and local variables where appropriate.
-- Follow the naming conventions established in the project. For example, if a Flixel attribute has an underscore in its name, do NOT use it when replicating it in Java (e.g., `_myVar` becomes `myVar`).
+- Follow the naming conventions established in the project.
 
 ### Performance & Memory
 
@@ -37,8 +38,8 @@ public class MyObject extends FlixelSprite {
   public void update(float elapsed) {
     super.update(elapsed);
     tempVector.set(velocity).scl(elapsed);
-    x += tempVector.x;
-    y += tempVector.y;
+    changeX(tempVector.x);
+    changeY(tempVector.y);
   }
 }
 ```
@@ -51,8 +52,8 @@ public class MyObject extends FlixelSprite {
   public void update(float elapsed) {
     super.update(elapsed);
     Vector2 movement = new Vector2(velocity).scl(elapsed); // Bad: new allocation every frame
-    x += movement.x;
-    y += movement.y;
+    changeX(movement.x);
+    changeY(movement.y);
   }
 }
 ```
