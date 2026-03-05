@@ -138,12 +138,17 @@ public class FlixelSound extends FlixelBasic {
     return sound.getCursorPosition() * SEC_TO_MS;
   }
 
-  /** Sets playback position in milliseconds. */
-  public void setTime(float timeMs) {
+  /**
+   * Sets the playback position in milliseconds.
+   * 
+   * @param timeMs The time to set the playback position to in milliseconds.
+   * @return {@code this} for chaining.
+   */
+  public FlixelSound setTime(float timeMs) {
     sound.seekTo(timeMs * MS_TO_SEC);
+    return this;
   }
 
-  /** Length of the sound in milliseconds. */
   public float getLength() {
     return sound.getLength() * SEC_TO_MS;
   }
@@ -156,12 +161,38 @@ public class FlixelSound extends FlixelBasic {
     sound.setLooping(looped);
   }
 
-  /** Whether the sound is currently playing. */
   public boolean isPlaying() {
     return sound.isPlaying();
   }
 
-  /** Plays the sound. If already playing, continues from current position unless {@code forceRestart}. */
+  /**
+   * Plays the sound from the beginning.
+   *
+   * @return {@code this} for chaining.
+   */
+  @NotNull
+  public FlixelSound play() {
+    return play(true, 0f);
+  }
+
+  /**
+   * Plays the sound.
+   *
+   * @param forceRestart Should the sound be restarted if it is already playing?
+   * @return {@code this} for chaining.
+   */
+  @NotNull
+  public FlixelSound play(boolean forceRestart) {
+    return play(forceRestart, 0f);
+  }
+
+  /**
+   * Plays the sound.
+   *
+   * @param forceRestart Whether to restart the sound if it is already playing.
+   * @param startTimeMs The time to start the sound at in milliseconds.
+   * @return {@code this} for chaining.
+   */
   @NotNull
   public FlixelSound play(boolean forceRestart, float startTimeMs) {
     cancelFadeTween();
@@ -170,12 +201,6 @@ public class FlixelSound extends FlixelBasic {
     }
     sound.play();
     return this;
-  }
-
-  /** Plays from the beginning. */
-  @NotNull
-  public FlixelSound play() {
-    return play(true, 0f);
   }
 
   /** Pauses the sound. */
