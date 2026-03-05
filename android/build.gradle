@@ -6,10 +6,6 @@ android {
   namespace "me.stringdotjar.flixelgdx"
   compileSdk 36
 
-  publishing {
-    singleVariant("release")
-  }
-
   defaultConfig {
     multiDexEnabled = true
     minSdkVersion 34
@@ -48,18 +44,4 @@ dependencies {
   api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
   api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
   api "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
-}
-
-apply plugin: 'maven-publish'
-afterEvaluate {
-  publishing {
-    publications {
-      release(MavenPublication) {
-        from components.release
-        groupId = project.group
-        artifactId = project.name
-        version = project.version
-      }
-    }
-  }
 }
