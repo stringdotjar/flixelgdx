@@ -1,6 +1,8 @@
-package me.stringdotjar.flixelgdx.input;
+package me.stringdotjar.flixelgdx.input.gamepad;
 
 import com.badlogic.gdx.Input;
+
+import me.stringdotjar.flixelgdx.input.key.FlixelKey;
 
 /**
  * Gamepad button codes copied from libGDX {@link Input.Keys} BUTTON_* values for backwards compatibility.
@@ -10,7 +12,8 @@ public final class FlixelGamepad {
 
   private FlixelGamepad() {}
 
-  public static final int NONE = -1;
+  public static final int NONE = -2; // In HaxeFlixel, this is -1, but we use -2 to avoid confusion with ANY.
+  public static final int ANY = -1;
   public static final int A = 96;
   public static final int B = 97;
   public static final int C = 98;
