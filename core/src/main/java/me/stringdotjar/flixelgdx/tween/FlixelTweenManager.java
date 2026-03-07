@@ -32,6 +32,7 @@ public class FlixelTweenManager {
    * @param elapsed The amount of time that has passed since the last frame.
    */
   public void update(float elapsed) {
+    activeTweens.begin();
     ArrayList<FlixelTween> finishedTweens = new ArrayList<>();
     for (FlixelTween tween : activeTweens) {
       if (tween == null || !tween.isActive()) {

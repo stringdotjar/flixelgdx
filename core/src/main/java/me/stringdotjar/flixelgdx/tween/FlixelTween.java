@@ -112,7 +112,6 @@ public class FlixelTween implements Pool.Poolable {
   /**
    * Starts {@code this} tween and resets every value to its initial state.
    *
-   * @return {@code this} tween.
    */
   public FlixelTween start() {
     waitingForRestart = false;
@@ -151,6 +150,7 @@ public class FlixelTween implements Pool.Poolable {
     var duration = tweenSettings.getDuration();
     var onStart = tweenSettings.getOnStart();
     var onUpdate = tweenSettings.getOnUpdate();
+    var onComplete = tweenSettings.getOnComplete();
     var framerate = tweenSettings.getFramerate();
 
     float preTick = secondsSinceStart;
@@ -182,8 +182,12 @@ public class FlixelTween implements Pool.Poolable {
     }
     // Check if the tween has finished.
     if (secondsSinceStart >= duration + delay) {
+      scale = (backward) ? 0 : 1;
       updateTweenValues();
       finished = true;
+      if (onComplete != null) {
+        onComplete.run(this);
+      }
     } else {
       updateTweenValues();
       if (postTick > preTick && onUpdate != null) {
@@ -197,14 +201,9 @@ public class FlixelTween implements Pool.Poolable {
    */
   public void finish() {
     executions++;
-    var onComplete = tweenSettings.getOnComplete();
+
     var type = tweenSettings.getType();
 
-    if (onComplete != null) {
-      onComplete.run(this);
-    }
-
-    scale = (backward) ? 0 : 1;
     if (type.equals(FlixelTweenType.LOOPING) || type.equals(FlixelTweenType.PINGPONG)) {
       if (type == FlixelTweenType.PINGPONG)
       {
@@ -298,12 +297,8 @@ public class FlixelTween implements Pool.Poolable {
    * Cancels {@code this} tween, removes it from its manager and automatically defaults its values.
    */
   public FlixelTween cancel() {
-    if (manager != null) {
-      manager.removeTween(this, true);
-    } else {
-      resetBasic();
-    }
-    return this;
+    resetBasic();
+    return manager.removeTween(this, true);
   }
 
   @Override
@@ -360,7 +355,7 @@ public class FlixelTween implements Pool.Poolable {
     }
 
     if (manager != null) {
-      manager.getActiveTweens().removeValue(this, true);
+      manager.removeTween(this, false);
     }
 
     manager = newManager;
