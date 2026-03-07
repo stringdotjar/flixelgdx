@@ -15,7 +15,7 @@ import me.stringdotjar.flixelgdx.logging.FlixelStackTraceProvider;
 import me.stringdotjar.flixelgdx.backend.FlixelAlerter;
 import me.stringdotjar.flixelgdx.display.FlixelCamera;
 import me.stringdotjar.flixelgdx.display.FlixelState;
-import me.stringdotjar.flixelgdx.input.key.FlixelKeyInputManager;
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKeyInputManager;
 import me.stringdotjar.flixelgdx.logging.FlixelLogMode;
 import me.stringdotjar.flixelgdx.logging.FlixelLogger;
 import me.stringdotjar.flixelgdx.signal.FlixelSignal;
