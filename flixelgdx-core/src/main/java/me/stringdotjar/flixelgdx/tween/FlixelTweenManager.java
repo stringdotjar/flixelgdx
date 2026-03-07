@@ -3,6 +3,8 @@ package me.stringdotjar.flixelgdx.tween;
 import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.SnapshotArray;
 
+import java.util.ArrayList;
+
 /** Manager class for handling a list of active {@link FlixelTween}s. */
 public class FlixelTweenManager {
 
@@ -26,33 +28,65 @@ public class FlixelTweenManager {
    * @param elapsed The amount of time that has passed since the last frame.
    */
   public void update(float elapsed) {
-    FlixelTween[] tweens = activeTweens.begin();
-    for (int i = 0, n = activeTweens.size; i < n; i++) {
-      FlixelTween tween = tweens[i];
-      if (tween == null) {
+    FlixelTween[] items = activeTweens.begin();
+    ArrayList<FlixelTween> finishedTweens = new ArrayList<>();
+    for (int i = 0; i < activeTweens.size; i++) {
+      FlixelTween tween = items[i];
+      if (tween == null || !tween.isActive()) {
         continue;
       }
       tween.update(elapsed);
+    }
 
-      if (tween.finished) {
+    for (int i = 0; i < activeTweens.size; i++) {
+      FlixelTween tween = items[i];
+      if (tween != null && tween.isFinished()) {
         if (tween.manager != this) {
           continue;
         }
-        var settings = tween.getTweenSettings();
-        if (settings == null) {
-          continue;
-        }
+        finishedTweens.add(tween);
+      }
+    }
 
-        switch (settings.getType()) {
-          case ONESHOT -> {
-            activeTweens.removeValue(tween, true);
-            tweenPool.free(tween);
-          }
-          case PERSIST -> {} // Do nothing, let it be.
-        }
+    if(!finishedTweens.isEmpty()) {
+      for(FlixelTween finishedTween : finishedTweens) {
+        finishedTween.finish();
       }
     }
     activeTweens.end();
+  }
+
+  /**
+   * Remove a FlixelTween
+   *
+   *
+   * @param tween The FlixelTween to remove.
+   * @param destroy Whether you want to destroy the FlixelTween.
+   * @return	The removed FlixelTween object.
+   */
+  public FlixelTween removeTween(FlixelTween tween, Boolean destroy) {
+    if (tween == null)
+      return null;
+
+    tween.active = false;
+    activeTweens.removeValue(tween, true);
+
+    if (destroy) {
+      tween.destroy();
+      tweenPool.free(tween);
+    }
+
+    return tween;
+  }
+
+  /**
+   * Add FlixelTween to activeTweens array
+   */
+  public void addToActiveTweens(FlixelTween tween) {
+    activeTweens.add(tween);
+    if(tween.isWaitingForRestart()) {
+      tween.restart();
+    }
   }
 
   public SnapshotArray<FlixelTween> getActiveTweens() {
