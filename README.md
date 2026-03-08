@@ -119,6 +119,7 @@ public class Custom3DCamera extends FlixelCamera {
 - **Tweening**: Built-in tweening system for smooth animations and transitions, with property-based tweens that work naturally with getters/setters.
 - **Input Handling**: Simplified keyboard and touch/mouse input.
 - **Logging & Debugging**: Integrated logging system with stack trace support.
+- **...and much more!**
 
 ### Entity & Sprite Basics
 
@@ -177,7 +178,7 @@ States give you a high-level way to structure screens (menus, loading, gameplay,
 
 **How it works.**
 
-- **`FlixelState`** extends `FlixelGroup<FlixelBasic>` and implements libGDX’s `Screen`. When the game switches to a state, `create()` is called once; then each frame the state’s `update(delta)` and `draw(batch)` run, which in turn update and draw all members you added. Use `Flixel.switchState(newState)` to transition; the old state is disposed automatically.
+- **`FlixelState`** extends `FlixelGroup<FlixelBasic>` and implements libGDX’s `Screen`. When the game switches to a state, `create()` is called once; then each frame the state’s `update(elapsed)` and `draw(batch)` run, which in turn update and draw all members you added. Use `Flixel.switchState(newState)` to transition; the old state is disposed automatically.
 - **`FlixelSubState`** is a state that is opened *on top of* another state. By default the parent state stops updating (`persistentUpdate = false`) but keeps drawing (`persistentDraw = true`), so you get a classic “pause overlay” or modal dialog. The substate has `openCallback` and `closeCallback`; call `close()` from inside the substate to remove it and resume the parent.
 - **Outros.** Override `startOutro(onOutroComplete)` on a state to run an exit animation or transition before the switch; when done, call the callback so the framework proceeds with the state change.
 
@@ -190,7 +191,7 @@ public class MenuState extends FlixelState {
   }
 
   @Override
-  public void update(float delta) {
+  public void update(float elapsed) {
     super.update(delta);
 
     if (Flixel.keyJustPressed(FlixelKey.ENTER)) {
@@ -214,7 +215,7 @@ public class PauseSubState extends FlixelSubState {
   }
 
   @Override
-  public void update(float delta) {
+  public void update(float elapsed) {
     super.update(delta);
     if (Flixel.keyJustPressed(FlixelKey.ESCAPE)) {
       close(); // returns to parent state
