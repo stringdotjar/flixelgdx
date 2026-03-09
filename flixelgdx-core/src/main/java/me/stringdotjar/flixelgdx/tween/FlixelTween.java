@@ -216,7 +216,10 @@ public class FlixelTween implements Pool.Poolable {
   }
 
   /**
-   * Finishes {@code this} tween and determine to remove by the Tween type
+   * Finishes {@code this} tween and determine to remove by the Tween type.
+   * If {@code this} tween's {@link FlixelTweenType} is {@link FlixelTweenType#LOOPING} or {@link FlixelTweenType#PINGPONG} {@link FlixelTween#restart} is called.
+   * Otherwise, the tween is removed from the manager and call any callback on completion.
+   *
    */
   public void finish() {
     executions++;
@@ -234,7 +237,6 @@ public class FlixelTween implements Pool.Poolable {
       if (onComplete != null) {
         onComplete.run(this);
       }
-      // If it's not PERSIST, remove tween from activeTweens and set to active = false
       if ((type.equals(FlixelTweenType.ONESHOT) || type.equals(FlixelTweenType.BACKWARD)) && manager != null) {
         waitingForRestart = false;
         manager.removeTween(this, true);
@@ -375,7 +377,7 @@ public class FlixelTween implements Pool.Poolable {
     this.waitingForRestart = waitingForRestart;
   }
 
-  public FlixelTween setManager(@NotNull FlixelTweenManager newManager) {
+  public void setManager(@NotNull FlixelTweenManager newManager) {
     if (manager != null) {
       manager.removeTween(this, false);
       waitingForRestart = true;
@@ -383,6 +385,5 @@ public class FlixelTween implements Pool.Poolable {
 
     manager = newManager;
     manager.addTween(this);
-    return this;
   }
 }

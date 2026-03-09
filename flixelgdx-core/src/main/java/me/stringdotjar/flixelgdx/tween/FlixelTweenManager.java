@@ -100,20 +100,6 @@ public class FlixelTweenManager {
     tween.setWaitingForRestart(waitingForRestart);
   }
 
-  /**
-   * Add an {@link FlixelTween} to {@code this} manager.
-   * When FlixelTween is added, it is added to the activeTweens SnapshortArray List.
-   * If the FlixelTween is waiting for a restart, it will call {@link FlixelTween#restart}.
-   *
-   * @param tween The FlixelTween to add.
-   */
-  public void addTween (FlixelTween tween) {
-    activeTweens.add(tween);
-    if (tween.isWaitingForRestart()) {
-      tween.restart();
-    }
-  }
-
   public SnapshotArray<FlixelTween> getActiveTweens() {
     return activeTweens;
   }
