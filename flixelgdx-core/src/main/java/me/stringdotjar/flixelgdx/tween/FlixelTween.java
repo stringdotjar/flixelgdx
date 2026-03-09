@@ -1,8 +1,6 @@
 package me.stringdotjar.flixelgdx.tween;
 
 import com.badlogic.gdx.utils.Pool;
-import me.stringdotjar.flixelgdx.tween.builders.FlixelAbstractTweenBuilder;
-import me.stringdotjar.flixelgdx.tween.builders.FlixelPropertyTweenBuilder;
 import me.stringdotjar.flixelgdx.tween.settings.FlixelTweenSettings;
 import me.stringdotjar.flixelgdx.tween.type.FlixelNumTween;
 import me.stringdotjar.flixelgdx.tween.type.FlixelPropertyTween;
@@ -63,44 +61,7 @@ public class FlixelTween implements Pool.Poolable {
   }
 
   /**
-   * Returns a fluent builder for the given tween type. Pass both the tween class and its builder
-   * class so the return type is the concrete builder ({@code B}), giving full IDE support for
-   * type-specific methods ({@code addGoal}, {@code from}, {@code to}, etc.) and common ones
-   * ({@code setDuration}, {@code setEase}), then {@link FlixelAbstractTweenBuilder#start()}.
-   *
-   * <p>Example (property):
-   * <pre>{@code
-   * FlixelPropertyTween tween = FlixelTween.tween(FlixelPropertyTween.class, FlixelPropertyTweenBuilder.class)
-   *   .addGoal(sprite::getX, 100f, sprite::setX)
-   *   .setDuration(1f)
-   *   .start();
-   * }</pre>
-   *
-   * <p>Example (num):
-   * <pre>{@code
-   * FlixelNumTween tween = FlixelTween.tween(FlixelNumTween.class, FlixelNumTweenBuilder.class)
-   *   .from(0f)
-   *   .to(1f)
-   *   .setCallback(v -> {})
-   *   .setDuration(1f)
-   *   .start();
-   * }</pre>
-   *
-   * @param tweenType   The tween class (e.g. {@link FlixelPropertyTween}.class).
-   * @param builderType The corresponding builder class (e.g. {@link FlixelPropertyTweenBuilder}.class).
-   * @return A new builder instance of type {@code B} for chaining.
-   */
-  public static <T extends FlixelTween, B extends FlixelAbstractTweenBuilder<T, B>> B tween(Class<T> tweenType, Class<B> builderType) {
-    try {
-      return builderType.getDeclaredConstructor().newInstance();
-    } catch (ReflectiveOperationException e) {
-      throw new IllegalArgumentException("Could not instantiate builder " + builderType.getName() + ". It must have a no-arg constructor.", e);
-    }
-  }
-
-  /**
-   * Creates a new reflection-based tween with the provided settings and adds it to the global tween manager
-   * (which starts it automatically). Shorthand for create, add and start, matching HaxeFlixel's FlxTween.tween.
+   * Creates a new reflection-based tween with the provided settings and starts it in the global tween manager.
    *
    * @param object The object to tween its values.
    * @param tweenSettings The settings that configure and determine how the tween should animate.
@@ -108,23 +69,25 @@ public class FlixelTween implements Pool.Poolable {
    * @return The newly created and started tween.
    */
   public static FlixelTween tween(Object object, FlixelTweenSettings tweenSettings, FlixelVarTween.FunkinVarTweenUpdateCallback updateCallback) {
-    return globalManager.addTween(new FlixelVarTween(object, tweenSettings, updateCallback));
+    return new FlixelVarTween(object, tweenSettings, updateCallback)
+      .setManager(globalManager)
+      .start();
   }
 
   /**
-   * Creates a new property-based tween with the provided settings and adds it to the global tween manager
-   * (which starts it automatically). Shorthand for create, add and start, matching HaxeFlixel's FlxTween.tween.
+   * Creates a new property-based tween with the provided settings and starts it in the global tween manager.
    *
    * @param tweenSettings The settings that configure and determine how the tween should animate.
    * @return The newly created and started tween.
    */
   public static FlixelTween tween(FlixelTweenSettings tweenSettings) {
-    return globalManager.addTween(new FlixelPropertyTween(tweenSettings));
+    return new FlixelPropertyTween(tweenSettings)
+      .setManager(globalManager)
+      .start();
   }
 
   /**
-   * Creates a new numerical tween with the provided settings and adds it to the global tween manager
-   * (which starts it automatically). Shorthand for create, add and start, matching HaxeFlixel's FlxTween.num.
+   * Creates a new numerical tween with the provided settings and starts it in the global tween manager.
    *
    * @param from The starting floating point value.
    * @param to The ending floating point value.
@@ -133,7 +96,9 @@ public class FlixelTween implements Pool.Poolable {
    * @return The newly created and started tween.
    */
   public static FlixelTween num(float from, float to, FlixelTweenSettings tweenSettings, FlixelNumTween.FlixelNumTweenUpdateCallback updateCallback) {
-    return globalManager.addTween(new FlixelNumTween(from, to, tweenSettings, updateCallback));
+    return new FlixelNumTween(from, to, tweenSettings, updateCallback)
+      .setManager(globalManager)
+      .start();
   }
 
   /**
