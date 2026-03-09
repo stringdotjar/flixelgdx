@@ -93,7 +93,7 @@ public class FlixelLogger {
   }
 
   public void info(String tag, Object message) {
-    outputLog(tag, evaluateMessage(message), FlixelLogLevel.INFO);
+    outputLog(tag, message.toString(), FlixelLogLevel.INFO);
   }
 
   public void warn(Object message) {
@@ -101,7 +101,7 @@ public class FlixelLogger {
   }
 
   public void warn(String tag, Object message) {
-    outputLog(tag, evaluateMessage(message), FlixelLogLevel.WARN);
+    outputLog(tag, message.toString(), FlixelLogLevel.WARN);
   }
 
   public void error(Object message) {
@@ -117,7 +117,7 @@ public class FlixelLogger {
   }
 
   public void error(String tag, Object message, Throwable throwable) {
-    String msg = (throwable != null) ? (evaluateMessage(message) + " | Exception: " + throwable) : evaluateMessage(message);
+    String msg = (throwable != null) ? (message.toString() + " | Exception: " + throwable) : message.toString();
     outputLog(tag, msg, FlixelLogLevel.ERROR);
   }
 
@@ -220,10 +220,6 @@ public class FlixelLogger {
     sb.append(text);
     sb.append(FlixelConstants.AsciiCodes.RESET);
     return sb.toString();
-  }
-
-  private String evaluateMessage(Object message) {
-    return message != null ? message.toString() : "null";
   }
 
   public String getDefaultTag() {
