@@ -20,6 +20,7 @@ import me.stringdotjar.flixelgdx.logging.FlixelLogMode;
 import me.stringdotjar.flixelgdx.logging.FlixelLogger;
 import me.stringdotjar.flixelgdx.signal.FlixelSignal;
 import me.stringdotjar.flixelgdx.signal.FlixelSignalData.UpdateSignalData;
+import me.stringdotjar.flixelgdx.tween.FlixelTween;
 import me.stringdotjar.flixelgdx.signal.FlixelSignalData.StateSwitchSignalData;
 import org.jetbrains.annotations.NotNull;
 
@@ -65,14 +66,17 @@ public final class Flixel {
   private static FlixelStackTraceProvider stackTraceProvider;
 
   /**
-   * Initializes the global manager.
+   * Initializes the entire Flixel system.
+   * 
+   * <p>This gets called BEFORE {@link FlixelGame#create()} is executed.
+   * It sets up every core system that Flixel needs to work, such as the asset manager, audio system, key input manager,
+   * logger, backend systems for different platforms, and more.
    *
-   * <p>This can only be called once. If attempted to be executed again, the game will throw an
-   * exception.
+   * <p>This can only be called once. If attempted to be executed again, the game will throw an {@link IllegalStateException}.
    *
-   * @param gameInstance The instance of the game to use.
-   * @param alertSystem The system to use for displaying alert notifications to the user.
-   * @param stackTraceProviderSystem The system to use for providing stack traces on logs.
+   * @param gameInstance The {@link FlixelGame} instance to use.
+   * @param alertSystem The {@link FlixelAlerter} instance to use for displaying alert notifications to the user.
+   * @param stackTraceProviderSystem The {@link FlixelStackTraceProvider} instance to use for providing stack traces on logs.
    * @throws IllegalStateException If Flixel has already been initialized.
    */
   public static void initialize(@NotNull FlixelGame gameInstance,
@@ -97,11 +101,21 @@ public final class Flixel {
   }
 
   /**
-   * Sets the current screen to the provided screen.
-   *
+   * Sets the current screen to the provided screen, and clears all active tweens by default.
+   * 
    * @param newState The new {@code FlixelState} to set as the current screen.
    */
   public static void switchState(FlixelState newState) {
+    switchState(newState, true);
+  }
+
+  /**
+   * Sets the current screen to the provided screen.
+   *
+   * @param newState The new {@code FlixelState} to set as the current screen.
+   * @param clearTweens Whether to clear all active tweens.
+   */
+  public static void switchState(FlixelState newState, boolean clearTweens) {
     Signals.preStateSwitch.dispatch(new StateSwitchSignalData(newState));
     if (!initialized) {
       throw new IllegalStateException("Flixel has not been initialized yet!");
@@ -112,6 +126,14 @@ public final class Flixel {
     if (state != null) {
       state.hide();
       state.dispose();
+    }
+    if (clearTweens) {
+      FlixelTween.getGlobalManager()
+        .getActiveTweens()
+        .forEach(tween -> tween.cancel());
+      FlixelTween.getGlobalManager()
+        .getTweenPool()
+        .clear();
     }
     game.resetCameras();
     state = newState;
@@ -182,7 +204,59 @@ public final class Flixel {
   }
 
   public static void setDefaultLogTag(@NotNull String tag) {
-    defaultLogger.setDefaultTag(tag);
+    if (defaultLogger != null) {
+      defaultLogger.setDefaultTag(tag);
+    }
+  }
+
+  /** Sets the folder where log files are stored, or {@code null} for default (project root in IDE, next to JAR when run from JAR). */
+  public static void setLogsFolder(String absolutePathToLogsFolder) {
+    if (defaultLogger != null) {
+      defaultLogger.setLogsFolder(absolutePathToLogsFolder);
+    }
+  }
+
+  /** Returns the custom logs folder path, or {@code null} if using the default. */
+  public static String getLogsFolder() {
+    return defaultLogger != null ? defaultLogger.getLogsFolder() : null;
+  }
+
+  /** Enables or disables writing logs to a file when {@link #startFileLogging()} is called. */
+  public static void setCanStoreLogs(boolean canStoreLogs) {
+    if (defaultLogger != null) {
+      defaultLogger.setCanStoreLogs(canStoreLogs);
+    }
+  }
+
+  /** Returns whether file logging is enabled for the default logger. */
+  public static boolean canStoreLogs() {
+    return defaultLogger != null && defaultLogger.canStoreLogs();
+  }
+
+  /** Sets the maximum number of log files to keep. */
+  public static void setMaxLogFiles(int maxLogFiles) {
+    if (defaultLogger != null) {
+      defaultLogger.setMaxLogFiles(maxLogFiles);
+    }
+  }
+
+  /** Returns the maximum number of log files to keep. If no logger is set, returns 0. */
+  public static int getMaxLogFiles() {
+    return defaultLogger != null ? defaultLogger.getMaxLogFiles() : 0;
+  }
+
+  /** Starts file logging for the default logger (uses its current canStoreLogs and maxLogFiles). */
+  public static void startFileLogging() {
+    if (defaultLogger != null) {
+      defaultLogger.startFileLogging();
+    }
+  }
+
+  /** Stops the default logger's file writer thread; call during game shutdown. */
+  public static void stopFileLogging() {
+    if (defaultLogger != null) {
+      defaultLogger.stopFileLogging();
+    }
   }
 
   public static FlixelAlerter getAlerter() {
@@ -194,7 +268,7 @@ public final class Flixel {
   }
 
   public static FlixelLogMode getLogMode() {
-    return defaultLogger.getLogMode();
+    return defaultLogger != null ? defaultLogger.getLogMode() : FlixelLogMode.SIMPLE;
   }
 
   public static FlixelGame getGame() {
@@ -270,7 +344,9 @@ public final class Flixel {
   }
 
   public static void setLogMode(@NotNull FlixelLogMode mode) {
-    defaultLogger.setLogMode(mode);
+    if (defaultLogger != null) {
+      defaultLogger.setLogMode(mode);
+    }
   }
 
   public static boolean globalAntialiasing() {
