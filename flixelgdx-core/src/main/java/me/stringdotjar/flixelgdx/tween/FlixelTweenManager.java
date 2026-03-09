@@ -89,17 +89,6 @@ public class FlixelTweenManager {
     return tween;
   }
 
-  /**
-   * Set {@link FlixelTween} for a restart.
-   * {@link FlixelTween#restart} will be called on the next {@link FlixelTween#update}.
-   *
-   * @param tween The FlixelTween to set restart for.
-   * @param waitingForRestart To determine if the FlixelTween will restart next time it is added to the active pool.
-   */
-  public void setRestartForTween(FlixelTween tween, boolean waitingForRestart) {
-    tween.setWaitingForRestart(waitingForRestart);
-  }
-
   public SnapshotArray<FlixelTween> getActiveTweens() {
     return activeTweens;
   }
