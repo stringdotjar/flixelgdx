@@ -31,6 +31,19 @@ public class FlixelTweenManager {
    */
   public FlixelTween addTween(FlixelTween tween) {
     tween.setManager(this);
+    activeTweens.add(tween);
+    tween.start();
+    return tween;
+  }
+
+  /**
+   * Adds the tween to {@link FlixelTweenManager#activeTweens} without setting manager.
+   *
+   * @param tween The tween to add and start.
+   * @return The same tween for chaining.
+   */
+  public FlixelTween addTweenToActiveTweenList(FlixelTween tween) {
+    activeTweens.add(tween);
     tween.start();
     return tween;
   }

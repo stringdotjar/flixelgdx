@@ -358,12 +358,11 @@ public class FlixelTween implements Pool.Poolable {
     this.active = active;
   }
 
-  public void setManager(@NotNull FlixelTweenManager newManager) {
+  public FlixelTween setManager(@NotNull FlixelTweenManager newManager) {
     if (manager != null) {
       manager.removeTween(this, false);
     }
-
     manager = newManager;
-    manager.addTween(this);
+    return manager.addTweenToActiveTweenList(this);
   }
 }
