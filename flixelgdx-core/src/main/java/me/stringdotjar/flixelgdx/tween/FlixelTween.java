@@ -51,6 +51,12 @@ public class FlixelTween implements Pool.Poolable {
   /** Is {@code this} tween tweening backwards? */
   protected boolean backward = false;
 
+  /**
+   * True when {@link #restart()} is being invoked internally from {@link #finish()} for
+   * looping / ping-pong behavior, as opposed to a manual restart call.
+   */
+  protected boolean internalRestart = false;
+
   /** Default constructor for pooling purposes. */
   protected FlixelTween() {}
 
@@ -224,7 +230,9 @@ public class FlixelTween implements Pool.Poolable {
       if (type.equals(FlixelTweenType.PINGPONG)) {
         backward = !backward;
       }
+      internalRestart = true;
       restart();
+      internalRestart = false;
     } else {
       var onComplete = tweenSettings.getOnComplete();
       if (onComplete != null) {
@@ -289,13 +297,17 @@ public class FlixelTween implements Pool.Poolable {
   }
 
   /**
-   * Restarts {@code this} tween if it is currently running and not finished.
+   * Restarts {@code this} tween from the beginning. Resets elapsed time and scale so the
+   * tween runs again from the start (or from current property values for property/var
+   * tweens when restarted manually).
    */
   public void restart() {
-    if (tweenSettings.getDuration() <= 0) {
+    if (tweenSettings == null || tweenSettings.getDuration() <= 0) {
       active = false;
       return;
     }
+    secondsSinceStart = 0.0f;
+    scale = 0.0f;
     active = true;
     finished = false;
   }

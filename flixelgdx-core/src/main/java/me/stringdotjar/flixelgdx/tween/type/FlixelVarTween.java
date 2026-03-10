@@ -128,6 +128,40 @@ public class FlixelVarTween extends FlixelTween {
   }
 
   @Override
+  public void restart() {
+    // For manual restarts, refresh the starting values from the current object fields
+    // so the tween resumes from "where things are now". For internal loop / ping-pong
+    // restarts, keep the original start values so the animation stays between the
+    // original endpoints.
+    if (!internalRestart && tweenSettings != null && object != null && fieldsCache != null) {
+      var goals = tweenSettings.getGoals();
+      if (goals != null && !goals.isEmpty()) {
+        initialValues.clear();
+
+        final Field[] fields = fieldsCache;
+        final Object target = object;
+        tweenSettings.forEachGoal((fieldName, value) -> {
+          for (Field field : fields) {
+            if (field == null || !field.getName().equals(fieldName)) {
+              continue;
+            }
+            try {
+              if (!field.trySetAccessible()) {
+                continue;
+              }
+              initialValues.put(fieldName, field.getFloat(target));
+              break;
+            } catch (IllegalAccessException e) {
+              // ignore and move on to the next field / goal
+            }
+          }
+        });
+      }
+    }
+    super.restart();
+  }
+
+  @Override
   public void reset() {
     super.reset();
     fieldsCache = null;
