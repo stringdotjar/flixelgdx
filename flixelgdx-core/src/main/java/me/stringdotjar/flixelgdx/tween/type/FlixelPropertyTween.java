@@ -74,7 +74,7 @@ public class FlixelPropertyTween extends FlixelTween {
       if (goal == null) {
         continue;
       }
-      float newValue = startValue + (goal.toValue() - startValue) * scale;
+      float newValue = (startValue + (goal.toValue() - startValue)) * scale;
       goal.setter().set(newValue);
     }
   }
