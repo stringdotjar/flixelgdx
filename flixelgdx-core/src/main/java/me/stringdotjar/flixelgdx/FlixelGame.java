@@ -75,8 +75,8 @@ public abstract class FlixelGame implements ApplicationListener {
   /** The current window size stored in a vector object. */
   protected Vector2 windowSize;
 
-  /** The entry point screen the game starts in (which becomes null after the game is done setting up!). */
-  protected FlixelState initialScreen;
+  /** The entry point state the game starts in. */
+  protected FlixelState initialState;
 
   /** The framerate of how fast the game should update and render. */
   private int framerate;
@@ -181,7 +181,7 @@ public abstract class FlixelGame implements ApplicationListener {
     this.title = title;
     this.viewSize = new Vector2(width, height);
     this.windowSize = new Vector2(width, height);
-    this.initialScreen = initialScreen;
+    this.initialState = initialScreen;
     this.framerate = framerate;
     this.vsync = vsync;
     this.fullscreen = fullscreen;
@@ -213,9 +213,6 @@ public abstract class FlixelGame implements ApplicationListener {
     // Set up file logging (writes to project root in IDE, or next to the JAR when run from a JAR).
     Flixel.startFileLogging();
 
-    Flixel.switchState(initialScreen);
-    initialScreen = null;
-
     // Ensure keyboard state is tracked for Flixel.keys (firstJustPressed, firstJustReleased, etc.)
     if (Flixel.keys != null) {
       InputProcessor keysProcessor = Flixel.keys.getInputProcessor();
@@ -231,6 +228,8 @@ public abstract class FlixelGame implements ApplicationListener {
         Gdx.input.setInputProcessor(m);
       }
     }
+
+    Flixel.switchState(initialState);
   }
 
   @Override

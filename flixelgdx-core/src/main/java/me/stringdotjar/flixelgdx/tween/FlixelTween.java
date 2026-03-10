@@ -67,6 +67,16 @@ public class FlixelTween implements Pool.Poolable {
   }
 
   /**
+   * (Re-)initializes this tween with the given settings (e.g. when obtained from the pool).
+   * Subclasses override to set type-specific state and should call {@code super.init(settings)}.
+   *
+   * @param settings The settings that configure how the tween should animate.
+   */
+  public void init(FlixelTweenSettings settings) {
+    setTweenSettings(settings);
+  }
+
+  /**
    * Returns a fluent builder for the given tween type. Pass both the tween class and its builder
    * class so the return type is the concrete builder ({@code B}), giving full IDE support for
    * type-specific methods ({@code addGoal}, {@code from}, {@code to}, etc.) and common ones
@@ -112,7 +122,9 @@ public class FlixelTween implements Pool.Poolable {
    * @return The newly created and started tween.
    */
   public static FlixelTween tween(Object object, FlixelTweenSettings tweenSettings, FlixelVarTween.FunkinVarTweenUpdateCallback updateCallback) {
-    return globalManager.addTween(new FlixelVarTween(object, tweenSettings, updateCallback));
+    FlixelVarTween t = globalManager.obtainTween(FlixelVarTween.class, () -> new FlixelVarTween(object, tweenSettings, updateCallback));
+    t.init(object, tweenSettings, updateCallback);
+    return globalManager.addTween(t);
   }
 
   /**
@@ -123,7 +135,9 @@ public class FlixelTween implements Pool.Poolable {
    * @return The newly created and started tween.
    */
   public static FlixelTween tween(FlixelTweenSettings tweenSettings) {
-    return globalManager.addTween(new FlixelPropertyTween(tweenSettings));
+    FlixelPropertyTween t = globalManager.obtainTween(FlixelPropertyTween.class, () -> new FlixelPropertyTween(tweenSettings));
+    t.init(tweenSettings);
+    return globalManager.addTween(t);
   }
 
   /**
@@ -137,7 +151,9 @@ public class FlixelTween implements Pool.Poolable {
    * @return The newly created and started tween.
    */
   public static FlixelTween num(float from, float to, FlixelTweenSettings tweenSettings, FlixelNumTween.FlixelNumTweenUpdateCallback updateCallback) {
-    return globalManager.addTween(new FlixelNumTween(from, to, tweenSettings, updateCallback));
+    FlixelNumTween t = globalManager.obtainTween(FlixelNumTween.class, () -> new FlixelNumTween(from, to, tweenSettings, updateCallback));
+    t.init(from, to, tweenSettings, updateCallback);
+    return globalManager.addTween(t);
   }
 
   /**
