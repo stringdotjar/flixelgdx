@@ -333,6 +333,9 @@ public class FlixelSound extends FlixelBasic {
 
   @Override
   public void update(float elapsed) {
+    if (fadeTween != null) {
+      fadeTween.update(elapsed);
+    }
     if (!active || !exists || sound == null) {
       return;
     }

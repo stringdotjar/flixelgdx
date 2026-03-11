@@ -358,7 +358,9 @@ public abstract class FlixelGame implements ApplicationListener {
 
     fullscreen = Gdx.graphics.isFullscreen();
 
-    update(delta);
+    if (!autoPause || (isFocused && !isMinimized)) {
+      update(delta);
+    }
     draw();
   }
 
@@ -371,6 +373,9 @@ public abstract class FlixelGame implements ApplicationListener {
   /** Called when the user regains focus on the game's window. */
   public void onWindowFocused() {
     isFocused = true;
+    if (autoPause && !isMinimized) {
+      Flixel.sound.resume();
+    }
     Flixel.Signals.windowFocused.dispatch();
   }
 
@@ -380,6 +385,10 @@ public abstract class FlixelGame implements ApplicationListener {
       return;
     }
     isFocused = false;
+    if (autoPause) {
+      // pause audio when focus lost (and not minimized)
+      Flixel.sound.pause();
+    }
     Flixel.Signals.windowUnfocused.dispatch();
   }
 
@@ -391,11 +400,15 @@ public abstract class FlixelGame implements ApplicationListener {
    */
   public void onWindowMinimized(boolean iconified) {
     isMinimized = iconified;
-    if (!isMinimized) {
-      return;
+    if (iconified) {
+      isFocused = false;
+      if (autoPause) {
+        Flixel.sound.pause();
+      }
+      Flixel.Signals.windowMinimized.dispatch();
+    } else if (isFocused && autoPause) {
+      Flixel.sound.resume();
     }
-    isFocused = false;
-    Flixel.Signals.windowMinimized.dispatch();
   }
 
   /**
