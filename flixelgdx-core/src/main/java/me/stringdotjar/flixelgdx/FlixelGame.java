@@ -16,12 +16,11 @@ import com.badlogic.gdx.utils.SnapshotArray;
 
 import me.stringdotjar.flixelgdx.display.FlixelCamera;
 import me.stringdotjar.flixelgdx.display.FlixelState;
+import me.stringdotjar.flixelgdx.signal.FlixelSignalData.UpdateSignalData;
 import me.stringdotjar.flixelgdx.text.FlixelFontRegistry;
 import me.stringdotjar.flixelgdx.tween.FlixelTween;
 import me.stringdotjar.flixelgdx.util.FlixelRuntimeUtil;
 import org.fusesource.jansi.AnsiConsole;
-
-import static me.stringdotjar.flixelgdx.signal.FlixelSignalData.UpdateSignalData;
 
 /**
  * The game object used for containing the main loop and core elements of the Flixel game.
@@ -86,6 +85,9 @@ public abstract class FlixelGame implements ApplicationListener {
 
   /** Should the game start in fullscreen mode? */
   protected boolean fullscreen;
+
+  /** Should the game pause update calls and audio when the window loses focus or is minimized? */
+  public boolean autoPause = true;
 
   /** Is the game's window currently focused? */
   private boolean isFocused = true;
@@ -286,7 +288,7 @@ public abstract class FlixelGame implements ApplicationListener {
     }
     cameras.end();
 
-    // Capture key state at end of frame so firstJustPressed/firstJustReleased work next frame
+    // Capture key state at end of frame so firstJustPressed/firstJustReleased work next frame.
     if (Flixel.keys != null) {
       Flixel.keys.endFrame();
     }
@@ -326,7 +328,6 @@ public abstract class FlixelGame implements ApplicationListener {
           batch.setColor(current.getBgColor());
           batch.draw(bgTexture, camera.x, camera.y, camera.getWorldWidth(), camera.getWorldHeight());
           batch.setColor(Color.WHITE);
-
           current.draw(batch);
         }
 
@@ -351,7 +352,9 @@ public abstract class FlixelGame implements ApplicationListener {
 
     fullscreen = Gdx.graphics.isFullscreen();
 
-    update(delta);
+    if (!autoPause || isFocused) {
+      update(delta);
+    }
     draw();
   }
 
@@ -364,15 +367,18 @@ public abstract class FlixelGame implements ApplicationListener {
   /** Called when the user regains focus on the game's window. */
   public void onWindowFocused() {
     isFocused = true;
+    if (autoPause && !isMinimized) {
+      Flixel.sound.resume();
+    }
     Flixel.Signals.windowFocused.dispatch();
   }
 
   /** Called when the user loses focus on the game's window, while also not being minimized. */
   public void onWindowUnfocused() {
-    if (isMinimized) {
-      return;
-    }
     isFocused = false;
+    if (autoPause) {
+      Flixel.sound.pause();
+    }
     Flixel.Signals.windowUnfocused.dispatch();
   }
 
@@ -384,10 +390,10 @@ public abstract class FlixelGame implements ApplicationListener {
    */
   public void onWindowMinimized(boolean iconified) {
     isMinimized = iconified;
-    if (!isMinimized) {
-      return;
-    }
     isFocused = false;
+    if (autoPause) {
+      Flixel.sound.pause();
+    }
     Flixel.Signals.windowMinimized.dispatch();
   }
 
@@ -407,6 +413,16 @@ public abstract class FlixelGame implements ApplicationListener {
   /** Toggles fullscreen mode on or off, depending on the current state. */
   public void toggleFullscreen() {
     setFullscreen(!Flixel.isFullscreen());
+  }
+
+  /**
+   * Toggles auto-pause on or off.
+   *
+   * @return The new value of autoPause after toggling.
+   */
+  public boolean toggleAutoPause() {
+    autoPause = !autoPause;
+    return autoPause;
   }
 
   /**
@@ -520,7 +536,7 @@ public abstract class FlixelGame implements ApplicationListener {
     return (int) windowSize.x;
   }
 
-  public  int getWindowHeight() {
+  public int getWindowHeight() {
     return (int) windowSize.y;
   }
 
