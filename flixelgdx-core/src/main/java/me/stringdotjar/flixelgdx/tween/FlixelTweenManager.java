@@ -1,13 +1,13 @@
 package me.stringdotjar.flixelgdx.tween;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.SnapshotArray;
 
-import me.stringdotjar.flixelgdx.tween.type.FlixelNumTween;
-import me.stringdotjar.flixelgdx.tween.type.FlixelPropertyTween;
-import me.stringdotjar.flixelgdx.tween.type.FlixelVarTween;
+import me.stringdotjar.flixelgdx.tween.builders.FlixelAbstractTweenBuilder;
 
 /**
  * Manager class for handling a list of active {@link FlixelTween}s.
@@ -16,34 +16,60 @@ import me.stringdotjar.flixelgdx.tween.type.FlixelVarTween;
  * normally used via {@link FlixelTween#getGlobalManager()} rather than instantiating separately.
  * Adding a tween via {@link #addTween(FlixelTween)} automatically starts it.
  *
- * <p>Uses a separate libGDX {@link Pool} per concrete tween type for reuse. Call {@link #clearPools()}
- * when clearing state (e.g. on state switch) to release pooled instances.
+ * <p>Uses a registry: each tween type is registered with its builder class and a pool factory.
+ * Only registered types can be used with {@link FlixelTween#tween(Class, Class)}. Call
+ * {@link #clearPools()} when clearing state (e.g. on state switch) to release pooled instances.
  */
 public class FlixelTweenManager {
+
+  /**
+   * Registry entry for a tween type. Contains its builder class and the pool used for reuse.
+   */
+  public static record TweenTypeRegistration(Class<?> builderClass, Pool<FlixelTween> pool) {}
+
+  /** Registry: tween type -> (builder class, pool). */
+  private final Map<Class<? extends FlixelTween>, TweenTypeRegistration> registry = new HashMap<>();
 
   /** Array where all current active tweens are stored. */
   protected final SnapshotArray<FlixelTween> activeTweens = new SnapshotArray<>(FlixelTween[]::new);
 
-  private final Pool<FlixelPropertyTween> propertyTweenPool = new Pool<FlixelPropertyTween>() {
-    @Override
-    protected FlixelPropertyTween newObject() {
-      return new FlixelPropertyTween(null);
+  /**
+   * Registers a tween type with its builder class and a factory for creating new instances when the pool is empty.
+   * Register all tween types (including custom ones) before using {@link FlixelTween#tween(Class, Class)}.
+   *
+   * @param tweenClass The tween class (e.g. {@link me.stringdotjar.flixelgdx.tween.type.FlixelPropertyTween}.class).
+   * @param builderClass The corresponding builder class (e.g. {@link me.stringdotjar.flixelgdx.tween.builders.FlixelPropertyTweenBuilder}.class).
+   * @param poolFactory Supplies a new tween instance when the pool is empty (used for reset/poolable instances).
+   * @param <T> The tween type.
+   * @return this manager, for chaining.
+   */
+  public <T extends FlixelTween> FlixelTweenManager registerTweenType(
+      Class<T> tweenClass,
+      Class<? extends FlixelAbstractTweenBuilder<T, ?>> builderClass,
+      Supplier<T> poolFactory) {
+    Pool<FlixelTween> pool = new Pool<FlixelTween>() {
+      @Override
+      protected FlixelTween newObject() {
+        return poolFactory.get();
+      }
+    };
+    if (registry.containsKey(tweenClass)) {
+      throw new IllegalArgumentException("Tween type " + tweenClass.getName() + " is already registered.");
     }
-  };
+    registry.put(tweenClass, new TweenTypeRegistration(builderClass, pool));
+    return this;
+  }
 
-  private final Pool<FlixelVarTween> varTweenPool = new Pool<FlixelVarTween>() {
-    @Override
-    protected FlixelVarTween newObject() {
-      return new FlixelVarTween(null, null, null);
-    }
-  };
-
-  private final Pool<FlixelNumTween> numTweenPool = new Pool<FlixelNumTween>() {
-    @Override
-    protected FlixelNumTween newObject() {
-      return new FlixelNumTween(0, 0, null, null);
-    }
-  };
+  /**
+   * Returns the builder class registered for the given tween type.
+   *
+   * @param tweenClass The registered tween class to look up.
+   * @return The registered builder class.
+   * @throws IllegalArgumentException If the registered tween type is not registered.
+   */
+  public Class<?> getBuilderClass(Class<? extends FlixelTween> tweenClass) {
+    return getRegistration(tweenClass).builderClass();
+  }
 
   /**
    * Adds the tween to this manager and starts it immediately.
@@ -93,34 +119,25 @@ public class FlixelTweenManager {
   }
 
   /**
-   * Obtains a tween of the given type from the appropriate pool, or creates one using the factory
-   * if the type is not one of the built-in pooled types. The returned tween is reset; the caller
-   * must set its settings (and any type-specific state) before adding it via {@link #addTween(FlixelTween)}.
+   * Obtains a tween of the given type from the registry's pool, or creates one using the factory
+   * if the type is not registered. The returned tween is reset; the caller must set its settings
+   * (and any type-specific state) before adding it via {@link #addTween(FlixelTween)}.
    *
-   * @param type The tween class (e.g. {@link FlixelPropertyTween}.class).
-   * @param factory Creates a new tween when the type is not pooled or the pool is empty.
+   * @param type The tween class (e.g. {@link me.stringdotjar.flixelgdx.tween.type.FlixelPropertyTween}.class).
+   * @param factory Creates a new tween when the type is not registered or the pool is empty.
    * @return A reset tween of type {@code T}, either from the pool or from {@code factory}.
    */
   @SuppressWarnings("unchecked")
   public <T extends FlixelTween> T obtainTween(Class<T> type, Supplier<T> factory) {
-    if (type == FlixelPropertyTween.class) {
-      return (T) propertyTweenPool.obtain();
-    }
-    if (type == FlixelVarTween.class) {
-      return (T) varTweenPool.obtain();
-    }
-    if (type == FlixelNumTween.class) {
-      return (T) numTweenPool.obtain();
-    }
-    return factory.get();
+    return (T) getPool(type).obtain();
   }
 
   /**
    * Remove an {@link FlixelTween} from {@code this} manager.
-   * When {@code destroy} is true, the tween is reset and returned to its type-specific pool for reuse.
+   * When {@code destroy} is true, the tween is reset and returned to its type's pool if registered.
    *
    * @param tween The tween to remove.
-   * @param destroy If true, reset the tween and free it to the pool (if it is a pooled type).
+   * @param destroy If true, reset the tween and free it to the pool (if its type is registered).
    * @return The removed tween.
    */
   public FlixelTween removeTween(FlixelTween tween, boolean destroy) {
@@ -132,41 +149,32 @@ public class FlixelTweenManager {
     activeTweens.removeValue(tween, true);
 
     if (destroy) {
-      if (tween instanceof FlixelPropertyTween) {
-        propertyTweenPool.free((FlixelPropertyTween) tween);
-      } else if (tween instanceof FlixelVarTween) {
-        varTweenPool.free((FlixelVarTween) tween);
-      } else if (tween instanceof FlixelNumTween) {
-        numTweenPool.free((FlixelNumTween) tween);
-      }
-      // Custom subclasses are not pooled; they are just dropped for GC
+      getPool(tween.getClass()).free(tween);
     }
 
     return tween;
   }
 
-  public Pool<FlixelPropertyTween> getPropertyTweenPool() {
-    return propertyTweenPool;
+  public Pool<FlixelTween> getPool(Class<? extends FlixelTween> tweenClass) {
+    return getRegistration(tweenClass).pool();
   }
 
-  public Pool<FlixelVarTween> getVarTweenPool() {
-    return varTweenPool;
-  }
-
-  public Pool<FlixelNumTween> getNumTweenPool() {
-    return numTweenPool;
-  }
-
-  /**
-   * Clears all tween pools. Call when switching state with {@code clearTweens} to release pooled instances.
-   */
   public void clearPools() {
-    propertyTweenPool.clear();
-    varTweenPool.clear();
-    numTweenPool.clear();
+    for (TweenTypeRegistration reg : registry.values()) {
+      reg.pool().clear();
+    }
   }
 
   public SnapshotArray<FlixelTween> getActiveTweens() {
     return activeTweens;
+  }
+
+  private TweenTypeRegistration getRegistration(Class<? extends FlixelTween> tweenClass) {
+    TweenTypeRegistration reg = registry.get(tweenClass);
+    if (reg == null) {
+      throw new IllegalArgumentException("Tween type \"" + tweenClass.getName() + "\" is not registered. "
+          + "Register it with FlixelTweenManager.registerTweenType().");
+    }
+    return reg;
   }
 }

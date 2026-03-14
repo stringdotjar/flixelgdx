@@ -21,6 +21,13 @@ import me.stringdotjar.flixelgdx.logging.FlixelLogger;
 import me.stringdotjar.flixelgdx.signal.FlixelSignal;
 import me.stringdotjar.flixelgdx.signal.FlixelSignalData.UpdateSignalData;
 import me.stringdotjar.flixelgdx.tween.FlixelTween;
+import me.stringdotjar.flixelgdx.tween.FlixelTweenManager;
+import me.stringdotjar.flixelgdx.tween.builders.FlixelNumTweenBuilder;
+import me.stringdotjar.flixelgdx.tween.builders.FlixelPropertyTweenBuilder;
+import me.stringdotjar.flixelgdx.tween.builders.FlixelVarTweenBuilder;
+import me.stringdotjar.flixelgdx.tween.type.FlixelNumTween;
+import me.stringdotjar.flixelgdx.tween.type.FlixelPropertyTween;
+import me.stringdotjar.flixelgdx.tween.type.FlixelVarTween;
 import me.stringdotjar.flixelgdx.signal.FlixelSignalData.StateSwitchSignalData;
 import org.jetbrains.annotations.NotNull;
 
@@ -96,6 +103,12 @@ public final class Flixel {
     assetManager.setLoader(MASound.class, new MASoundLoader(sound.getEngine(), assetManager.getFileHandleResolver()));
 
     keys = new FlixelKeyInputManager();
+
+    // Register default tween types.
+    FlixelTween.getGlobalManager()
+      .registerTweenType(FlixelPropertyTween.class, FlixelPropertyTweenBuilder.class, () -> new FlixelPropertyTween(null))
+      .registerTweenType(FlixelVarTween.class, FlixelVarTweenBuilder.class, () -> new FlixelVarTween(null, null, null))
+      .registerTweenType(FlixelNumTween.class, FlixelNumTweenBuilder.class, () -> new FlixelNumTween(0, 0, null, null));
 
     initialized = true;
   }

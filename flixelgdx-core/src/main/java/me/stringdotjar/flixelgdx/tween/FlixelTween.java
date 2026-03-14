@@ -67,10 +67,15 @@ public class FlixelTween implements Pool.Poolable {
   }
 
   /**
-   * Returns a fluent builder for the given tween type. Pass both the tween class and its builder
-   * class so the return type is the concrete builder ({@code B}), giving full IDE support for
-   * type-specific methods ({@code addGoal}, {@code from}, {@code to}, etc.) and common ones
-   * ({@code setDuration}, {@code setEase}), then {@link FlixelAbstractTweenBuilder#start()}.
+   * Returns a fluent builder for the given tween type.
+   *
+   * <p>The tween type must be registered (e.g. via {@link FlixelTweenManager#registerTweenType}); if not, then
+   * this method will throw an {@link IllegalArgumentException}.
+   *
+   * <p>Pass both the tween class and its builder class so the
+   * return type is the concrete builder ({@code B}), giving full IDE support for type-specific methods
+   * ({@code addGoal()}, {@code from()}, {@code to()}, etc.) and common ones ({@code setDuration},
+   * {@code setEase}), then {@link FlixelAbstractTweenBuilder#start()}.
    *
    * <p>Example (property):
    * <pre>{@code
@@ -80,25 +85,24 @@ public class FlixelTween implements Pool.Poolable {
    *   .start();
    * }</pre>
    *
-   * <p>Example (num):
-   * <pre>{@code
-   * FlixelNumTween tween = FlixelTween.tween(FlixelNumTween.class, FlixelNumTweenBuilder.class)
-   *   .from(0f)
-   *   .to(1f)
-   *   .setCallback(v -> {})
-   *   .setDuration(1f)
-   *   .start();
-   * }</pre>
-   *
-   * @param tweenType The tween class (e.g. {@link FlixelPropertyTween}.class).
+   * @param tweenType The tween class (e.g. {@link FlixelPropertyTween}.class). Must be registered.
    * @param builderType The corresponding builder class (e.g. {@link FlixelPropertyTweenBuilder}.class).
    * @return A new builder instance of type {@code B} for chaining.
+   * @throws IllegalArgumentException If {@code tweenType} is not registered, or the registered builder could not be instantiated.
    */
   public static <T extends FlixelTween, B extends FlixelAbstractTweenBuilder<T, B>> B tween(Class<T> tweenType, Class<B> builderType) {
+    Class<?> registeredBuilderClass = globalManager.getBuilderClass(tweenType);
+    if (!builderType.isAssignableFrom(registeredBuilderClass)) {
+      throw new IllegalArgumentException(
+          "Registered builder for " + tweenType.getName() + " is " + registeredBuilderClass.getName()
+              + ", which is not assignable to " + builderType.getName());
+    }
     try {
-      return builderType.getDeclaredConstructor().newInstance();
+      @SuppressWarnings("unchecked")
+      B builder = (B) registeredBuilderClass.getDeclaredConstructor().newInstance();
+      return builder;
     } catch (ReflectiveOperationException e) {
-      throw new IllegalArgumentException("Could not instantiate builder " + builderType.getName() + ". It must have a no-arg constructor.", e);
+      throw new IllegalArgumentException("Could not instantiate builder " + registeredBuilderClass.getName() + ". It must have a no-arg constructor.", e);
     }
   }
 
