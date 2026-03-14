@@ -40,6 +40,11 @@ public class FlixelPropertyTween extends FlixelTween {
   }
 
   @Override
+  public void init(FlixelTweenSettings settings) {
+    super.init(settings);
+  }
+
+  @Override
   public FlixelTween start() {
     super.start();
 
