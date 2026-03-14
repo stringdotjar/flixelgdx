@@ -21,6 +21,13 @@ import me.stringdotjar.flixelgdx.logging.FlixelLogger;
 import me.stringdotjar.flixelgdx.signal.FlixelSignal;
 import me.stringdotjar.flixelgdx.signal.FlixelSignalData.UpdateSignalData;
 import me.stringdotjar.flixelgdx.tween.FlixelTween;
+import me.stringdotjar.flixelgdx.tween.FlixelTweenManager;
+import me.stringdotjar.flixelgdx.tween.builders.FlixelNumTweenBuilder;
+import me.stringdotjar.flixelgdx.tween.builders.FlixelPropertyTweenBuilder;
+import me.stringdotjar.flixelgdx.tween.builders.FlixelVarTweenBuilder;
+import me.stringdotjar.flixelgdx.tween.type.FlixelNumTween;
+import me.stringdotjar.flixelgdx.tween.type.FlixelPropertyTween;
+import me.stringdotjar.flixelgdx.tween.type.FlixelVarTween;
 import me.stringdotjar.flixelgdx.signal.FlixelSignalData.StateSwitchSignalData;
 import org.jetbrains.annotations.NotNull;
 
@@ -67,7 +74,7 @@ public final class Flixel {
 
   /**
    * Initializes the entire Flixel system.
-   * 
+   *
    * <p>This gets called BEFORE {@link FlixelGame#create()} is executed.
    * It sets up every core system that Flixel needs to work, such as the asset manager, audio system, key input manager,
    * logger, backend systems for different platforms, and more.
@@ -97,22 +104,28 @@ public final class Flixel {
 
     keys = new FlixelKeyInputManager();
 
+    // Register default tween types.
+    FlixelTween.getGlobalManager()
+      .registerTweenType(FlixelPropertyTween.class, FlixelPropertyTweenBuilder.class, () -> new FlixelPropertyTween(null))
+      .registerTweenType(FlixelVarTween.class, FlixelVarTweenBuilder.class, () -> new FlixelVarTween(null, null, null))
+      .registerTweenType(FlixelNumTween.class, FlixelNumTweenBuilder.class, () -> new FlixelNumTween(0, 0, null, null));
+
     initialized = true;
   }
 
   /**
-   * Sets the current screen to the provided screen, and clears all active tweens by default.
-   * 
-   * @param newState The new {@code FlixelState} to set as the current screen.
+   * Sets the current state to the provided state, and clears all active tweens by default.
+   *
+   * @param newState The new {@code FlixelState} to set as the current state.
    */
   public static void switchState(FlixelState newState) {
     switchState(newState, true);
   }
 
   /**
-   * Sets the current screen to the provided screen.
+   * Sets the current state to the provided state.
    *
-   * @param newState The new {@code FlixelState} to set as the current screen.
+   * @param newState The new {@code FlixelState} to set as the current state.
    * @param clearTweens Whether to clear all active tweens.
    */
   public static void switchState(FlixelState newState, boolean clearTweens) {
@@ -131,9 +144,7 @@ public final class Flixel {
       FlixelTween.getGlobalManager()
         .getActiveTweens()
         .forEach(tween -> tween.cancel());
-      FlixelTween.getGlobalManager()
-        .getTweenPool()
-        .clear();
+      FlixelTween.getGlobalManager().clearPools();
     }
     game.resetCameras();
     state = newState;
