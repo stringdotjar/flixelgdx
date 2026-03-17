@@ -14,11 +14,13 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.SnapshotArray;
 
+import me.stringdotjar.flixelgdx.debug.FlixelDebugOverlay;
 import me.stringdotjar.flixelgdx.display.FlixelCamera;
 import me.stringdotjar.flixelgdx.display.FlixelState;
 import me.stringdotjar.flixelgdx.signal.FlixelSignalData.UpdateSignalData;
 import me.stringdotjar.flixelgdx.text.FlixelFontRegistry;
 import me.stringdotjar.flixelgdx.tween.FlixelTween;
+import me.stringdotjar.flixelgdx.util.FlixelConstants;
 import me.stringdotjar.flixelgdx.util.FlixelRuntimeUtil;
 import org.fusesource.jansi.AnsiConsole;
 
@@ -118,6 +120,9 @@ public abstract class FlixelGame implements ApplicationListener {
 
   /** Reusable signal data for postUpdate dispatch (avoids per-frame allocation). */
   private final UpdateSignalData postUpdateData = new UpdateSignalData();
+
+  /** Debug overlay drawn on a separate layer; {@code null} when debug mode is off. */
+  private FlixelDebugOverlay debugOverlay;
 
   /**
    * Creates a new game instance with the details specified.
@@ -228,6 +233,14 @@ public abstract class FlixelGame implements ApplicationListener {
       }
     }
 
+    // Create the debug overlay when debug mode is enabled.
+    if (Flixel.isDebugMode()) {
+      debugOverlay = new FlixelDebugOverlay();
+      if (Flixel.getLogger() != null) {
+        Flixel.getLogger().addLogListener(debugOverlay.getLogListener());
+      }
+    }
+
     Flixel.switchState(initialScreen);
   }
 
@@ -241,6 +254,10 @@ public abstract class FlixelGame implements ApplicationListener {
       }
     }
     cameras.end();
+
+    if (debugOverlay != null) {
+      debugOverlay.resize(width, height);
+    }
   }
 
   /**
@@ -290,6 +307,10 @@ public abstract class FlixelGame implements ApplicationListener {
       Flixel.keys.endFrame();
     }
 
+    if (debugOverlay != null) {
+      debugOverlay.update(elapsed);
+    }
+
     postUpdateData.set(elapsed);
     Flixel.Signals.postUpdate.dispatch(postUpdateData);
   }
@@ -311,6 +332,7 @@ public abstract class FlixelGame implements ApplicationListener {
         continue;
       }
 
+      camera.getViewport().apply();
       batch.setProjectionMatrix(camera.getCamera().combined);
       batch.begin();
 
@@ -337,12 +359,19 @@ public abstract class FlixelGame implements ApplicationListener {
 
     stage.draw();
 
+    if (debugOverlay != null) {
+      debugOverlay.drawBoundingBoxes(cameras);
+      debugOverlay.draw();
+    }
+
     Flixel.Signals.postDraw.dispatch();
   }
 
   @Override
   public final void render() {
-    float delta = Gdx.graphics.getDeltaTime();
+    float rawDelta = Gdx.graphics.getDeltaTime();
+    float clampedDelta = Math.max(FlixelConstants.Graphics.MIN_ELAPSED, Math.min(rawDelta, FlixelConstants.Graphics.MAX_ELAPSED));
+    Flixel.elapsed = clampedDelta;
 
     windowSize.x = Gdx.graphics.getWidth();
     windowSize.y = Gdx.graphics.getHeight();
@@ -350,7 +379,7 @@ public abstract class FlixelGame implements ApplicationListener {
     fullscreen = Gdx.graphics.isFullscreen();
 
     if (!autoPause || isFocused) {
-      update(delta);
+      update(clampedDelta);
     }
     draw();
   }
@@ -437,6 +466,14 @@ public abstract class FlixelGame implements ApplicationListener {
     isClosing = true;
 
     Flixel.Signals.preGameClose.dispatch();
+
+    if (debugOverlay != null) {
+      if (Flixel.getLogger() != null) {
+        Flixel.getLogger().removeLogListener(debugOverlay.getLogListener());
+      }
+      debugOverlay.dispose();
+      debugOverlay = null;
+    }
 
     Flixel.getState().hide();
     Flixel.getState().dispose();

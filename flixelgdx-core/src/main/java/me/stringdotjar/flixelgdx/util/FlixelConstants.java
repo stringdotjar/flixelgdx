@@ -1,5 +1,7 @@
 package me.stringdotjar.flixelgdx.util;
 
+import me.stringdotjar.flixelgdx.input.keyboard.FlixelKey;
+
 /**
  * Core class for holding static classes with values which do not change. It is NOT RECOMMENDED to
  * store things like {@link java.util.ArrayList}'s, as they can still be modified even if they are
@@ -18,7 +20,42 @@ public final class FlixelConstants {
     public static final int FACING_UP = 0x0100;
     public static final int FACING_DOWN = 0x1000;
 
+    /** Minimum allowed elapsed time (seconds) per frame to avoid zero-delta issues. */
+    public static final float MIN_ELAPSED = 0.000001f;
+
+    /** Maximum allowed elapsed time (seconds) per frame to cap extreme lag spikes. */
+    public static final float MAX_ELAPSED = 0.1f;
+
     private Graphics() {}
+  }
+
+  /**
+   * Constants used by the debug overlay and diagnostic systems.
+   */
+  public static final class Debug {
+
+    /** Default key used to toggle the debug overlay visibility. */
+    public static final int DEFAULT_TOGGLE_KEY = FlixelKey.F2;
+
+    /** Default key used to toggle visual debug (bounding boxes) on/off. */
+    public static final int DEFAULT_DRAW_DEBUG_KEY = FlixelKey.F3;
+
+    /** Maximum number of log entries the debug console keeps in its buffer. */
+    public static final int MAX_LOG_ENTRIES = 200;
+
+    /** RGBA color for bounding boxes drawn around objects with no collision. */
+    public static final float[] BOUNDINGBOX_COLOR_NO_COLLISION = { 0.2f, 0.4f, 1f, 0.6f };
+
+    /** RGBA color for bounding boxes drawn around immovable objects. */
+    public static final float[] BOUNDINGBOX_COLOR_IMMOVABLE = { 0.2f, 0.9f, 0.2f, 0.6f };
+
+    /** RGBA color for bounding boxes drawn around normal objects. */
+    public static final float[] BOUNDINGBOX_COLOR_NORMAL = { 1f, 0.2f, 0.2f, 0.6f };
+
+    /** Stats update interval in seconds (how often FPS/memory stats refresh). */
+    public static final float STATS_UPDATE_INTERVAL = 0.5f;
+
+    private Debug() {}
   }
 
   /**

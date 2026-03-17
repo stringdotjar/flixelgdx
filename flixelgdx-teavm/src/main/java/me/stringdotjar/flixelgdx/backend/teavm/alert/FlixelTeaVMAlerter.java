@@ -1,7 +1,8 @@
 package me.stringdotjar.flixelgdx.backend.teavm.alert;
 
-import me.stringdotjar.flixelgdx.backend.FlixelAlerter;
 import org.teavm.jso.JSBody;
+
+import me.stringdotjar.flixelgdx.backend.alert.FlixelAlerter;
 
 /**
  * Web (TeaVM) implementation of {@link FlixelAlerter} using the browser's {@code alert()}.
