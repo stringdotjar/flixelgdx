@@ -21,10 +21,10 @@ public final class FlixelConstants {
     public static final int FACING_DOWN = 0x1000;
 
     /** Minimum allowed elapsed time (seconds) per frame to avoid zero-delta issues. */
-    public static final float MIN_ELAPSED = 1f / 60f;
+    public static final float MIN_ELAPSED = 0.000001f;
 
     /** Maximum allowed elapsed time (seconds) per frame to cap extreme lag spikes. */
-    public static final float MAX_ELAPSED = 1f / 30f;
+    public static final float MAX_ELAPSED = 0.1f;
 
     private Graphics() {}
   }

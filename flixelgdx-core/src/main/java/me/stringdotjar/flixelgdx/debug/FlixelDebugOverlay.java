@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.SnapshotArray;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
@@ -18,6 +19,7 @@ import me.stringdotjar.flixelgdx.display.FlixelCamera;
 import me.stringdotjar.flixelgdx.logging.FlixelDebugConsoleEntry;
 import me.stringdotjar.flixelgdx.logging.FlixelLogEntry;
 import me.stringdotjar.flixelgdx.util.FlixelConstants;
+import me.stringdotjar.flixelgdx.util.FlixelDebugUtil;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -204,11 +206,8 @@ public class FlixelDebugOverlay implements Disposable {
     float lineH = font.getLineHeight() + 2f;
 
     float y = screenH - pad;
-    y = drawStatsPanel(pad, y, lineH);
-
-    y -= lineH;
-    y = drawWatchPanel(pad, y, lineH);
-
+    drawStatsPanel(pad, y, lineH);
+    drawWatchPanel(screenW - pad, screenH - pad, lineH);
     drawLogConsole(pad, lineH, screenW, screenH);
 
     batch.end();
@@ -227,17 +226,17 @@ public class FlixelDebugOverlay implements Disposable {
     return y;
   }
 
-  private float drawWatchPanel(float x, float y, float lineH) {
+  private float drawWatchPanel(float rightEdge, float y, float lineH) {
     FlixelDebugWatchManager mgr = Flixel.watch;
     if (mgr == null || mgr.isEmpty()) {
       return y;
     }
-    drawText("[#88CCFF]-- Watch --", x, y);
+    drawTextRight("[#88CCFF]-- Watch --", rightEdge, y);
     y -= lineH;
 
     watchDrawY = y;
     mgr.forEach((name, value) -> {
-      drawText("[#88CCFF]" + name + ":[#FFFFFF] " + value, x, watchDrawY);
+      drawTextRight("[#88CCFF]" + name + ":[#FFFFFF] " + value, rightEdge, watchDrawY);
       watchDrawY -= lineH;
     });
 
@@ -295,6 +294,10 @@ public class FlixelDebugOverlay implements Disposable {
 
   private void drawText(String markup, float x, float y) {
     font.draw(batch, markup, x, y);
+  }
+
+  private void drawTextRight(String markup, float rightEdge, float y) {
+    font.draw(batch, markup, 0, y, rightEdge, Align.right, false);
   }
 
   private void onLogEntry(FlixelLogEntry entry) {

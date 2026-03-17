@@ -420,14 +420,17 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelGroupable<F
     return members.size == 0;
   }
 
+  @Override
   public int getMaxSize() {
     return maxSize;
   }
 
+  @Override
   public void setMaxSize(int maxSize) {
     this.maxSize = Math.max(0, maxSize);
   }
 
+  @Override
   public SnapshotArray<FlixelSprite> getMembers() {
     return members;
   }

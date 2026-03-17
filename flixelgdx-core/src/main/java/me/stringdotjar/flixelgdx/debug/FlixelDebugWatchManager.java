@@ -18,11 +18,11 @@ import org.jetbrains.annotations.NotNull;
  * {@code FlxG.watch} front-end as closely as possible while staying idiomatic in Java.
  *
  * <ul>
- *   <li>{@link #add(String, Supplier)} – watch a supplier (equivalent to HaxeFlixel's {@code addFunction})</li>
- *   <li>{@link #remove(String)} – remove a watched entry by name</li>
- *   <li>{@link #addQuick(String, Object)} – set/update a value directly (call in {@code update()})</li>
- *   <li>{@link #removeQuick(String)} – remove a quick-watch entry</li>
- *   <li>{@link #addMouse()} / {@link #removeMouse()} – convenience for mouse coordinates</li>
+ *   <li>{@link #add(String, Supplier)}: watch a supplier (equivalent to HaxeFlixel's {@code addFunction})</li>
+ *   <li>{@link #remove(String)}: remove a watched entry by name</li>
+ *   <li>{@link #addQuick(String, Object)}: set/update a value directly (call in {@code update()})</li>
+ *   <li>{@link #removeQuick(String)}: remove a quick-watch entry</li>
+ *   <li>{@link #addMouse()} / {@link #removeMouse()}: convenience for mouse coordinates</li>
  * </ul>
  */
 public class FlixelDebugWatchManager {

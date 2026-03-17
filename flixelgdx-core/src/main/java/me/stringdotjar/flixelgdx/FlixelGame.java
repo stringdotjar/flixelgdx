@@ -332,6 +332,7 @@ public abstract class FlixelGame implements ApplicationListener {
         continue;
       }
 
+      camera.getViewport().apply();
       batch.setProjectionMatrix(camera.getCamera().combined);
       batch.begin();
 
