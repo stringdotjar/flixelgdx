@@ -11,7 +11,10 @@ import games.rednblack.miniaudio.loader.MASoundLoader;
 import games.rednblack.miniaudio.MiniAudio;
 import me.stringdotjar.flixelgdx.audio.FlixelAudioManager;
 import me.stringdotjar.flixelgdx.audio.FlixelSound;
+import me.stringdotjar.flixelgdx.backend.runtime.FlixelRuntimeMode;
+import me.stringdotjar.flixelgdx.debug.FlixelDebugWatchManager;
 import me.stringdotjar.flixelgdx.logging.FlixelStackTraceProvider;
+import me.stringdotjar.flixelgdx.util.FlixelConstants;
 import me.stringdotjar.flixelgdx.backend.FlixelAlerter;
 import me.stringdotjar.flixelgdx.display.FlixelCamera;
 import me.stringdotjar.flixelgdx.display.FlixelState;
@@ -21,7 +24,6 @@ import me.stringdotjar.flixelgdx.logging.FlixelLogger;
 import me.stringdotjar.flixelgdx.signal.FlixelSignal;
 import me.stringdotjar.flixelgdx.signal.FlixelSignalData.UpdateSignalData;
 import me.stringdotjar.flixelgdx.tween.FlixelTween;
-import me.stringdotjar.flixelgdx.tween.FlixelTweenManager;
 import me.stringdotjar.flixelgdx.tween.builders.FlixelNumTweenBuilder;
 import me.stringdotjar.flixelgdx.tween.builders.FlixelPropertyTweenBuilder;
 import me.stringdotjar.flixelgdx.tween.builders.FlixelVarTweenBuilder;
@@ -72,6 +74,30 @@ public final class Flixel {
   /** System used to detect where a log comes from when a log is created. **/
   private static FlixelStackTraceProvider stackTraceProvider;
 
+  /** Whether the game is running in debug mode. Can only be set once from the launcher. */
+  private static boolean debugMode = false;
+
+  /** Guard that ensures {@link #setDebugMode(boolean)} is only called once. */
+  private static boolean debugModeSet = false;
+
+  /** The runtime mode (TEST, DEBUG, RELEASE) set by the launcher. */
+  private static FlixelRuntimeMode runtimeMode = FlixelRuntimeMode.RELEASE;
+
+  /** Guard that ensures {@link #setRuntimeMode(FlixelRuntimeMode)} is only called once. */
+  private static boolean runtimeModeSet = false;
+
+  /** The capped elapsed time for the current frame. Set by {@link FlixelGame} after clamping the raw libGDX delta. */
+  protected static float elapsed = 0f;
+
+  /** The debug watch manager. Access via {@code Flixel.watch.add(...)}, {@code Flixel.watch.addQuick(...)}, etc. */
+  public static FlixelDebugWatchManager watch;
+
+  /** Current key used to toggle the debug overlay. */
+  private static int debugToggleKey = FlixelConstants.Debug.DEFAULT_TOGGLE_KEY;
+
+  /** Current key used to toggle visual debug (bounding boxes). */
+  private static int debugDrawToggleKey = FlixelConstants.Debug.DEFAULT_DRAW_DEBUG_KEY;
+
   /**
    * Initializes the entire Flixel system.
    *
@@ -95,14 +121,12 @@ public final class Flixel {
     game = gameInstance;
     alerter = alertSystem;
     stackTraceProvider = stackTraceProviderSystem;
-    defaultLogger = new FlixelLogger(FlixelLogMode.SIMPLE);
-
-    assetManager = new AssetManager();
-
-    sound = new FlixelAudioManager();
-    assetManager.setLoader(MASound.class, new MASoundLoader(sound.getEngine(), assetManager.getFileHandleResolver()));
-
     keys = new FlixelKeyInputManager();
+    sound = new FlixelAudioManager();
+    watch = new FlixelDebugWatchManager();
+    defaultLogger = new FlixelLogger(FlixelLogMode.SIMPLE);
+    assetManager = new AssetManager();
+    assetManager.setLoader(MASound.class, new MASoundLoader(sound.getEngine(), assetManager.getFileHandleResolver()));
 
     // Register default tween types.
     FlixelTween.getGlobalManager()
@@ -322,8 +346,160 @@ public final class Flixel {
     return assetManager;
   }
 
+  /**
+   * Returns the capped elapsed time (in seconds) for the current frame. This value is clamped
+   * between {@link me.stringdotjar.flixelgdx.util.FlixelConstants.Graphics#MIN_ELAPSED} and
+   * {@link me.stringdotjar.flixelgdx.util.FlixelConstants.Graphics#MAX_ELAPSED} by
+   * {@link FlixelGame} each frame.
+   */
   public static float getElapsed() {
-    return Gdx.graphics.getDeltaTime();
+    return elapsed;
+  }
+
+  /**
+   * Sets whether the game is running in debug mode. This may only be called <strong>once</strong>,
+   * typically from the platform launcher before the game starts. A second call throws an
+   * {@link IllegalStateException}.
+   *
+   * @param enabled {@code true} to enable debug mode.
+   * @throws IllegalStateException If called more than once.
+   */
+  public static void setDebugMode(boolean enabled) {
+    if (debugModeSet) {
+      throw new IllegalStateException("Debug mode can only be set once (from the launcher).");
+    }
+    debugMode = enabled;
+    debugModeSet = true;
+  }
+
+  public static boolean isDebugMode() {
+    return debugMode;
+  }
+
+  /**
+   * Sets the runtime mode for the game. This may only be called <strong>once</strong>, typically
+   * from the platform launcher before the game starts. A second call throws an
+   * {@link IllegalStateException}.
+   *
+   * @param mode The {@link FlixelRuntimeMode} to set.
+   * @throws IllegalStateException If called more than once.
+   */
+  public static void setRuntimeMode(@NotNull FlixelRuntimeMode mode) {
+    if (runtimeModeSet) {
+      throw new IllegalStateException("Runtime mode can only be set once (from the launcher).");
+    }
+    runtimeMode = mode;
+    runtimeModeSet = true;
+  }
+
+  /** Returns the current runtime mode. Defaults to {@link FlixelRuntimeMode#RELEASE}. */
+  public static FlixelRuntimeMode getRuntimeMode() {
+    return runtimeMode;
+  }
+
+  /**
+   * Returns the key used to toggle the debug overlay visibility.
+   *
+   * @see me.stringdotjar.flixelgdx.input.keyboard.FlixelKey
+   */
+  public static int getDebugToggleKey() {
+    return debugToggleKey;
+  }
+
+  /**
+   * Changes the key used to toggle the debug overlay visibility.
+   *
+   * @param key A key constant from {@link me.stringdotjar.flixelgdx.input.keyboard.FlixelKey}.
+   */
+  public static void setDebugToggleKey(int key) {
+    debugToggleKey = key;
+  }
+
+  /**
+   * Returns the key used to toggle visual debug (bounding box drawing) on/off.
+   *
+   * @see me.stringdotjar.flixelgdx.input.keyboard.FlixelKey
+   */
+  public static int getDebugDrawToggleKey() {
+    return debugDrawToggleKey;
+  }
+
+  /**
+   * Changes the key used to toggle visual debug (bounding box drawing) on/off.
+   *
+   * @param key A key constant from {@link me.stringdotjar.flixelgdx.input.keyboard.FlixelKey}.
+   */
+  public static void setDebugDrawToggleKey(int key) {
+    debugDrawToggleKey = key;
+  }
+
+  /** Returns the Java heap memory currently in use, in bytes. */
+  public static long getJavaHeapUsedBytes() {
+    Runtime rt = Runtime.getRuntime();
+    return rt.totalMemory() - rt.freeMemory();
+  }
+
+  /** Returns the Java heap memory currently in use, in megabytes. */
+  public static float getJavaHeapUsedMegabytes() {
+    return getJavaHeapUsedBytes() / (1024f * 1024f);
+  }
+
+  /** Returns the Java heap memory currently in use, in gigabytes. */
+  public static float getJavaHeapUsedGigabytes() {
+    return getJavaHeapUsedBytes() / (1024f * 1024f * 1024f);
+  }
+
+  /** Returns the total Java heap memory allocated by the JVM, in bytes. */
+  public static long getJavaHeapTotalBytes() {
+    return Runtime.getRuntime().totalMemory();
+  }
+
+  /** Returns the total Java heap memory allocated by the JVM, in megabytes. */
+  public static float getJavaHeapTotalMegabytes() {
+    return getJavaHeapTotalBytes() / (1024f * 1024f);
+  }
+
+  /** Returns the total Java heap memory allocated by the JVM, in gigabytes. */
+  public static float getJavaHeapTotalGigabytes() {
+    return getJavaHeapTotalBytes() / (1024f * 1024f * 1024f);
+  }
+
+  /** Returns the maximum Java heap memory available to the JVM, in bytes. */
+  public static long getJavaHeapMaxBytes() {
+    return Runtime.getRuntime().maxMemory();
+  }
+
+  /** Returns the maximum Java heap memory available to the JVM, in megabytes. */
+  public static float getJavaHeapMaxMegabytes() {
+    return getJavaHeapMaxBytes() / (1024f * 1024f);
+  }
+
+  /** Returns the maximum Java heap memory available to the JVM, in gigabytes. */
+  public static float getJavaHeapMaxGigabytes() {
+    return getJavaHeapMaxBytes() / (1024f * 1024f * 1024f);
+  }
+
+  /**
+   * Returns an estimate of the native/VRAM heap usage in bytes as reported by libGDX.
+   * This is not available on all platforms and may return {@code 0} when unsupported.
+   */
+  public static long getNativeHeapUsedBytes() {
+    return Gdx.app != null ? Gdx.app.getNativeHeap() : 0L;
+  }
+
+  /** Returns the native/VRAM heap usage in megabytes. */
+  public static float getNativeHeapUsedMegabytes() {
+    return getNativeHeapUsedBytes() / (1024f * 1024f);
+  }
+
+  /** Returns the native/VRAM heap usage in gigabytes. */
+  public static float getNativeHeapUsedGigabytes() {
+    return getNativeHeapUsedBytes() / (1024f * 1024f * 1024f);
+  }
+
+  /** Returns the current frames-per-second as reported by the graphics backend. */
+  public static int getFPS() {
+    return Gdx.graphics != null ? Gdx.graphics.getFramesPerSecond() : 0;
   }
 
   public static FlixelCamera getCamera() {

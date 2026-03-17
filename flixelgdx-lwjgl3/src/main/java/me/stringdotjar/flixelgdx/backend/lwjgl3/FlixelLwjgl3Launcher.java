@@ -6,6 +6,7 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3WindowAdapter;
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelGame;
 import me.stringdotjar.flixelgdx.backend.lwjgl3.alert.FlixelLwjgl3Alerter;
+import me.stringdotjar.flixelgdx.backend.runtime.FlixelRuntimeMode;
 
 import me.stringdotjar.flixelgdx.backend.jvm.logging.FlixelDefaultStackTraceProvider;
 
@@ -15,13 +16,29 @@ import me.stringdotjar.flixelgdx.backend.jvm.logging.FlixelDefaultStackTraceProv
 public class FlixelLwjgl3Launcher {
 
   /**
-   * Launches the LWJGL3 version of the Flixel game with the given game instance. This should be called from the main
-   * method of the libGDX LWJGL3 launcher class, and the game instance should be created in the same general area.
+   * Launches the LWJGL3 version of the Flixel game in {@link FlixelRuntimeMode#RELEASE RELEASE}
+   * mode. This should be called from the main method of the libGDX LWJGL3 launcher class.
    *
-   * @param game The game instance to launch. This should already be initialized with the desired configuration values.
+   * @param game  The game instance to launch.
+   * @param icons Optional window icon paths.
    */
   public static void launch(FlixelGame game, String... icons) {
+    launch(game, FlixelRuntimeMode.RELEASE, icons);
+  }
+
+  /**
+   * Launches the LWJGL3 version of the Flixel game with the given runtime mode. This should be
+   * called from the main method of the libGDX LWJGL3 launcher class, and the game instance
+   * should be created in the same general area.
+   *
+   * @param game The game instance to launch.
+   * @param runtimeMode The {@link FlixelRuntimeMode} for this session (TEST, DEBUG, or RELEASE).
+   * @param icons Optional window icon paths.
+   */
+  public static void launch(FlixelGame game, FlixelRuntimeMode runtimeMode, String... icons) {
     Flixel.initialize(game, new FlixelLwjgl3Alerter(), new FlixelDefaultStackTraceProvider());
+    Flixel.setRuntimeMode(runtimeMode);
+    Flixel.setDebugMode(runtimeMode == FlixelRuntimeMode.DEBUG);
 
     Lwjgl3ApplicationConfiguration configuration = new Lwjgl3ApplicationConfiguration();
     configuration.setTitle(game.getTitle());
