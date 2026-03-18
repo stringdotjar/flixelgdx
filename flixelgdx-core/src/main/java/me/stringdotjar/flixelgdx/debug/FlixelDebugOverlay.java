@@ -30,9 +30,9 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * The in-game debug overlay drawn as a <strong>separate layer</strong> on top of the game
+ * The in-game debug overlay drawn as a <strong>separate layer</strong> on top of the entire game
  * (including over the UI stage). It has its own {@link SpriteBatch}, {@link OrthographicCamera}
- * and {@link ScreenViewport} and is completely independent from the game rendering pipeline.
+ * and {@link ScreenViewport} and is completely independent of the game rendering pipeline.
  *
  * <p>The overlay displays:
  * <ul>
@@ -40,14 +40,17 @@ import java.util.function.Consumer;
  *   <li>Active object/member count</li>
  *   <li>A log console showing info/warn/error messages (newest at the bottom)</li>
  *   <li>A watch panel showing registered variable watches</li>
- *   <li>Optional visual debugging (bounding boxes around
- *       {@link me.stringdotjar.flixelgdx.FlixelObject} instances)</li>
+ *   <li>Optional visual debugging (bounding boxes around {@link me.stringdotjar.flixelgdx.FlixelObject} instances)</li>
  * </ul>
  *
  * <p>Toggle overlay visibility with {@link Flixel#getDebugToggleKey()} (default: {@link FlixelConstants.Debug#DEFAULT_TOGGLE_KEY}).
  * Toggle visual debug (hitboxes) with {@link Flixel#getDebugDrawToggleKey()} (default: {@link FlixelConstants.Debug#DEFAULT_DRAW_DEBUG_KEY}).
  */
 public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, Disposable {
+
+  private final float[] BOUNDINGBOX_COLOR_NORMAL = { 1f, 0.2f, 0.2f, 0.6f };
+  private final float[] BOUNDINGBOX_COLOR_IMMOVABLE = { 0.2f, 0.9f, 0.2f, 0.6f };
+  private final float[] BOUNDINGBOX_COLOR_NO_COLLISION = { 0.2f, 0.4f, 1f, 0.6f };
 
   private final SpriteBatch batch;
   private final ShapeRenderer shapeRenderer;
@@ -163,7 +166,7 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
       return;
     }
 
-    float[] c = FlixelConstants.Debug.BOUNDINGBOX_COLOR_NORMAL;
+    float[] c = BOUNDINGBOX_COLOR_NORMAL;
 
     Gdx.gl.glEnable(GL20.GL_BLEND);
     Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
