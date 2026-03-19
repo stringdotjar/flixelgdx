@@ -1,6 +1,7 @@
 package me.stringdotjar.flixelgdx.tween.builders;
 
 import com.badlogic.gdx.utils.Array;
+import me.stringdotjar.flixelgdx.functional.FloatSupplier;
 import me.stringdotjar.flixelgdx.tween.FlixelTween;
 import me.stringdotjar.flixelgdx.tween.settings.FlixelTweenSettings;
 import me.stringdotjar.flixelgdx.tween.settings.FlixelTweenSettings.FlixelTweenPropertyGoal;
@@ -27,6 +28,14 @@ public final class FlixelPropertyTweenBuilder extends FlixelAbstractTweenBuilder
   }
 
   public FlixelPropertyTweenBuilder addGoal(@NotNull FlixelTweenPropertyFloatGetter getter, float toValue, @NotNull FlixelTweenPropertyFloatSetter setter) {
+    propertyGoals.add(new FlixelTweenPropertyGoal(getter, toValue, setter));
+    return this;
+  }
+
+  /**
+   * Adds a property goal using the shared {@link FloatSupplier} interface.
+   */
+  public FlixelPropertyTweenBuilder addGoal(@NotNull FloatSupplier getter, float toValue, @NotNull FlixelTweenPropertyFloatSetter setter) {
     propertyGoals.add(new FlixelTweenPropertyGoal(getter, toValue, setter));
     return this;
   }

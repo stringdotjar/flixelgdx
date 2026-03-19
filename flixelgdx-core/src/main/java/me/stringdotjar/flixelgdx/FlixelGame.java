@@ -335,7 +335,7 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
     }
 
     FlixelDebugOverlay debugOverlay = Flixel.getDebugOverlay();
-    if (debugOverlay != null) {
+    if (debugOverlay != null && Flixel.isDebugMode()) {
       debugOverlay.update(elapsed);
     }
 

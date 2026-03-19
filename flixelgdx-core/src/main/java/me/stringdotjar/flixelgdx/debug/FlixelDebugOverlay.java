@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Align;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.SnapshotArray;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
@@ -61,6 +62,12 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
   private boolean drawDebug = false;
 
   private float statsTimer = 0f;
+
+  /** Timer used to refresh watch values at a fixed rate (10 Hz). */
+  private float watchRefreshTimer = 0f;
+
+  /** Cached formatted watch lines refreshed at 10 Hz to avoid per-frame allocations. */
+  private final Array<String> cachedWatchLines = new Array<>();
 
   private String cachedFpsText = "";
   private String cachedHeapText = "";
@@ -138,6 +145,8 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
     }
 
     statsTimer += elapsed;
+    watchRefreshTimer += elapsed;
+
     if (statsTimer >= FlixelConstants.Debug.STATS_UPDATE_INTERVAL) {
       statsTimer = 0f;
       int fps = Flixel.getFPS();
@@ -149,6 +158,20 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
       cachedHeapText = "[#AAAAFF]Heap: " + formatOneDecimal(heapMB) + " MB";
       cachedNativeText = "[#AAAAFF]Native: " + formatOneDecimal(nativeMB) + " MB";
       cachedObjectsText = "[#FFFF00]Objects: " + objectCount;
+    }
+
+    // Refresh watch values at 10 Hz to avoid unnecessary per-frame allocations,
+    // especially on mobile/TeaVM targets.
+    if (watchRefreshTimer >= 0.1f) {
+      watchRefreshTimer = 0f;
+      cachedWatchLines.clear();
+
+      FlixelDebugWatchManager mgr = Flixel.watch;
+      if (mgr != null && !mgr.isEmpty()) {
+        mgr.forEach((name, value) -> {
+          cachedWatchLines.add("[#88CCFF]" + name + ":[#FFFFFF] " + value);
+        });
+      }
     }
   }
 
@@ -252,17 +275,21 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
 
   private float drawWatchPanel(float rightEdge, float y, float lineH) {
     FlixelDebugWatchManager mgr = Flixel.watch;
-    if (mgr == null || mgr.isEmpty()) {
+    if (mgr == null || mgr.isEmpty() || cachedWatchLines.isEmpty()) {
       return y;
     }
     drawTextRight("[#88CCFF]----------- Watch -----------", rightEdge, y);
     y -= lineH;
 
     watchDrawY = y;
-    mgr.forEach((name, value) -> {
-      drawTextRight("[#88CCFF]" + name + ":[#FFFFFF] " + value, rightEdge, watchDrawY);
+    for (int i = 0; i < cachedWatchLines.size; i++) {
+      String line = cachedWatchLines.get(i);
+      if (line == null) {
+        continue;
+      }
+      drawTextRight(line, rightEdge, watchDrawY);
       watchDrawY -= lineH;
-    });
+    }
 
     return watchDrawY;
   }

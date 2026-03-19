@@ -1,6 +1,9 @@
 package me.stringdotjar.flixelgdx.debug;
 
 import com.badlogic.gdx.Gdx;
+import me.stringdotjar.flixelgdx.functional.ByteSupplier;
+import me.stringdotjar.flixelgdx.functional.FloatSupplier;
+import me.stringdotjar.flixelgdx.functional.ShortSupplier;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,7 +30,7 @@ public class FlixelDebugWatchManager {
 
   private static final String MOUSE_WATCH_NAME = "Mouse";
 
-  private final Map<String, Supplier<?>> watches = new ConcurrentHashMap<>();
+  private final Map<String, WatchEntry> watches = new ConcurrentHashMap<>();
 
   /**
    * Registers a watch entry. If an entry with the same name already exists it is replaced.
@@ -40,7 +43,46 @@ public class FlixelDebugWatchManager {
     if (displayName == null || valueGetter == null) {
       return;
     }
-    watches.put(displayName, valueGetter);
+    watches.put(displayName, new ObjectWatchEntry(valueGetter));
+  }
+
+  /**
+   * Registers a float watch entry without boxing.
+   *
+   * @param displayName The label shown in the watch panel.
+   * @param valueGetter A supplier that returns a primitive float each frame.
+   */
+  public void add(@NotNull String displayName, @NotNull FloatSupplier valueGetter) {
+    if (displayName == null || valueGetter == null) {
+      return;
+    }
+    watches.put(displayName, new FloatWatchEntry(valueGetter));
+  }
+
+  /**
+   * Registers a short watch entry without boxing.
+   *
+   * @param displayName The label shown in the watch panel.
+   * @param valueGetter A supplier that returns a primitive short each frame.
+   */
+  public void add(@NotNull String displayName, @NotNull ShortSupplier valueGetter) {
+    if (displayName == null || valueGetter == null) {
+      return;
+    }
+    watches.put(displayName, new ShortWatchEntry(valueGetter));
+  }
+
+  /**
+   * Registers a byte watch entry without boxing.
+   *
+   * @param displayName The label shown in the watch panel.
+   * @param valueGetter A supplier that returns a primitive byte each frame.
+   */
+  public void add(@NotNull String displayName, @NotNull ByteSupplier valueGetter) {
+    if (displayName == null || valueGetter == null) {
+      return;
+    }
+    watches.put(displayName, new ByteWatchEntry(valueGetter));
   }
 
   /**
@@ -56,7 +98,7 @@ public class FlixelDebugWatchManager {
 
   /** Adds a convenience watch entry that shows the current mouse screen position. */
   public void addMouse() {
-    watches.put(MOUSE_WATCH_NAME, () -> Gdx.input.getX() + ", " + Gdx.input.getY());
+    watches.put(MOUSE_WATCH_NAME, new ObjectWatchEntry(() -> Gdx.input.getX() + ", " + Gdx.input.getY()));
   }
 
   /** Removes the convenience mouse position watch entry. */
@@ -66,19 +108,13 @@ public class FlixelDebugWatchManager {
 
   /**
    * Iterates every watch entry, invoking the callback with each display name and its
-   * current resolved value. No intermediate collections are created.
+   * current resolved value string. No intermediate collections are created.
    *
-   * @param callback Receives (displayName, currentValue) for every entry.
+   * @param callback Receives (displayName, currentValueString) for every entry.
    */
-  public void forEach(@NotNull BiConsumer<String, Object> callback) {
-    for (Map.Entry<String, Supplier<?>> entry : watches.entrySet()) {
-      Object val;
-      try {
-        val = entry.getValue().get();
-      } catch (Exception e) {
-        val = "<error>";
-      }
-      callback.accept(entry.getKey(), val);
+  public void forEach(@NotNull BiConsumer<String, String> callback) {
+    for (Map.Entry<String, WatchEntry> entry : watches.entrySet()) {
+      callback.accept(entry.getKey(), entry.getValue().getValueString());
     }
   }
 
@@ -90,5 +126,75 @@ public class FlixelDebugWatchManager {
   /** Clears all watch entries. */
   public void clear() {
     watches.clear();
+  }
+
+  /**
+   * Interface for allowing primitive suppliers to be used without boxing.
+   */
+  private sealed interface WatchEntry permits ObjectWatchEntry, FloatWatchEntry, ShortWatchEntry, ByteWatchEntry {
+    String getValueString();
+  }
+
+  private record ObjectWatchEntry(Supplier<?> supplier) implements WatchEntry {
+    @Override
+    public String getValueString() {
+      Object val;
+      try {
+        val = supplier.get();
+      } catch (Exception e) {
+        return "<error>";
+      }
+      return String.valueOf(val);
+    }
+  }
+
+  private record FloatWatchEntry(FloatSupplier supplier) implements WatchEntry {
+    @Override
+    public String getValueString() {
+      try {
+        float value = supplier.getAsFloat();
+        return trimTrailingZeros(value);
+      } catch (Exception e) {
+        return "<error>";
+      }
+    }
+  }
+
+  private record ShortWatchEntry(ShortSupplier supplier) implements WatchEntry {
+    @Override
+    public String getValueString() {
+      try {
+        return Short.toString(supplier.getAsShort());
+      } catch (Exception e) {
+        return "<error>";
+      }
+    }
+  }
+
+  private record ByteWatchEntry(ByteSupplier supplier) implements WatchEntry {
+    @Override
+    public String getValueString() {
+      try {
+        return Byte.toString(supplier.getAsByte());
+      } catch (Exception e) {
+        return "<error>";
+      }
+    }
+  }
+
+  private static String trimTrailingZeros(float value) {
+    String s = Float.toString(value);
+    int dot = s.indexOf('.');
+    if (dot < 0) {
+      return s;
+    }
+    int end = s.length();
+    while (end > dot + 1 && s.charAt(end - 1) == '0') {
+      end--;
+    }
+    if (s.charAt(end - 1) == '.') {
+      end--;
+    }
+    return s.substring(0, end);
   }
 }
