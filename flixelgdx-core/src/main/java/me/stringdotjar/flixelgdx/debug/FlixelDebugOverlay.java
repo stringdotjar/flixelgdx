@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Align;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.SnapshotArray;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
@@ -48,9 +49,7 @@ import java.util.function.Consumer;
  */
 public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, Disposable {
 
-  private final float[] BOUNDINGBOX_COLOR_NORMAL = { 1f, 0.2f, 0.2f, 0.6f };
-  private final float[] BOUNDINGBOX_COLOR_IMMOVABLE = { 0.2f, 0.9f, 0.2f, 0.6f };
-  private final float[] BOUNDINGBOX_COLOR_NO_COLLISION = { 0.2f, 0.4f, 1f, 0.6f };
+  private static final float[] FALLBACK_COLOR = { 1f, 0.2f, 0.2f, 0.6f };
 
   private final SpriteBatch batch;
   private final ShapeRenderer shapeRenderer;
@@ -63,6 +62,12 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
   private boolean drawDebug = false;
 
   private float statsTimer = 0f;
+
+  /** Timer used to refresh watch values at a fixed rate (10 Hz). */
+  private float watchRefreshTimer = 0f;
+
+  /** Cached formatted watch lines refreshed at 10 Hz to avoid per-frame allocations. */
+  private final Array<String> cachedWatchLines = new Array<>();
 
   private String cachedFpsText = "";
   private String cachedHeapText = "";
@@ -140,6 +145,8 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
     }
 
     statsTimer += elapsed;
+    watchRefreshTimer += elapsed;
+
     if (statsTimer >= FlixelConstants.Debug.STATS_UPDATE_INTERVAL) {
       statsTimer = 0f;
       int fps = Flixel.getFPS();
@@ -148,16 +155,49 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
       int objectCount = FlixelDebugUtil.countActiveMembers();
 
       cachedFpsText = "[#00FF00]FPS: " + fps;
-      cachedHeapText = "[#AAAAFF]Heap: " + String.format("%.1f", heapMB) + " MB";
-      cachedNativeText = "[#AAAAFF]Native: " + String.format("%.1f", nativeMB) + " MB";
+      cachedHeapText = "[#AAAAFF]Heap: " + formatOneDecimal(heapMB) + " MB";
+      cachedNativeText = "[#AAAAFF]Native: " + formatOneDecimal(nativeMB) + " MB";
       cachedObjectsText = "[#FFFF00]Objects: " + objectCount;
+    }
+
+    // Refresh watch values at 10 Hz to avoid unnecessary per-frame allocations,
+    // especially on mobile/TeaVM targets.
+    if (watchRefreshTimer >= 0.1f) {
+      watchRefreshTimer = 0f;
+      cachedWatchLines.clear();
+
+      FlixelDebugWatchManager mgr = Flixel.watch;
+      if (mgr != null && !mgr.isEmpty()) {
+        mgr.forEach((name, value) -> {
+          cachedWatchLines.add("[#88CCFF]" + name + ":[#FFFFFF] " + value);
+        });
+      }
     }
   }
 
+  private static String formatOneDecimal(float value) {
+    // Avoid String.format/Formatter allocations.
+    float rounded = Math.round(value * 10f) / 10f;
+    String s = Float.toString(rounded);
+    int dot = s.indexOf('.');
+    if (dot < 0) {
+      return s + ".0";
+    }
+    // Ensure exactly one decimal digit.
+    int decimals = s.length() - dot - 1;
+    if (decimals == 0) {
+      return s + "0";
+    }
+    if (decimals > 1) {
+      return s.substring(0, dot + 2);
+    }
+    return s;
+  }
+
   /**
-   * Draws bounding boxes for all visible {@link me.stringdotjar.flixelgdx.FlixelObject} instances
-   * using each game camera's projection. Called from
-   * {@link me.stringdotjar.flixelgdx.FlixelGame#draw()} when visual debug is enabled.
+   * Draws bounding boxes for all visible {@link me.stringdotjar.flixelgdx.FlixelDebugDrawable}
+   * instances using each game camera's projection. Each object provides its own debug
+   * color via {@link me.stringdotjar.flixelgdx.FlixelDebugDrawable#getDebugBoundingBoxColor()}.
    *
    * @param cameras The game camera array.
    */
@@ -165,8 +205,6 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
     if (!drawDebug) {
       return;
     }
-
-    float[] c = BOUNDINGBOX_COLOR_NORMAL;
 
     Gdx.gl.glEnable(GL20.GL_BLEND);
     Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
@@ -179,9 +217,12 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
       }
       shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
       shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-      FlixelDebugUtil.forEachVisibleObject(obj -> {
+      FlixelDebugUtil.forEachDebugDrawable(drawable -> {
+        float[] c = drawable.getDebugBoundingBoxColor();
+        if (c == null || c.length < 4) c = FALLBACK_COLOR;
         shapeRenderer.setColor(c[0], c[1], c[2], c[3]);
-        shapeRenderer.rect(obj.getX(), obj.getY(), obj.getWidth(), obj.getHeight());
+        shapeRenderer.rect(drawable.getDebugX(), drawable.getDebugY(),
+          drawable.getDebugWidth(), drawable.getDebugHeight());
       });
       shapeRenderer.end();
     }
@@ -234,17 +275,21 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
 
   private float drawWatchPanel(float rightEdge, float y, float lineH) {
     FlixelDebugWatchManager mgr = Flixel.watch;
-    if (mgr == null || mgr.isEmpty()) {
+    if (mgr == null || mgr.isEmpty() || cachedWatchLines.isEmpty()) {
       return y;
     }
     drawTextRight("[#88CCFF]----------- Watch -----------", rightEdge, y);
     y -= lineH;
 
     watchDrawY = y;
-    mgr.forEach((name, value) -> {
-      drawTextRight("[#88CCFF]" + name + ":[#FFFFFF] " + value, rightEdge, watchDrawY);
+    for (int i = 0; i < cachedWatchLines.size; i++) {
+      String line = cachedWatchLines.get(i);
+      if (line == null) {
+        continue;
+      }
+      drawTextRight(line, rightEdge, watchDrawY);
       watchDrawY -= lineH;
-    });
+    }
 
     return watchDrawY;
   }
