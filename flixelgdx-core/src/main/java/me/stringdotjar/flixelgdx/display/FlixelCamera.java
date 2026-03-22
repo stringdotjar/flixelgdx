@@ -68,6 +68,14 @@ public class FlixelCamera extends FlixelBasic {
   public boolean useBgAlphaBlending = false;
 
   /**
+   * Whether the libGDX viewport should (re-)center the camera when the game window is resized.
+   *
+   * <p>Split-screen setups often want this to stay enabled (default), matching existing
+   * behavior. Disable it if you want strict scroll preservation through resizes.
+   */
+  public boolean centerCameraOnResize = true;
+
+  /**
    * The X position of this camera's display in native screen pixels.
    * {@link #zoom} does NOT affect this value.
    */
@@ -279,6 +287,8 @@ public class FlixelCamera extends FlixelBasic {
     this.zoom = (zoom == 0f) ? defaultZoom : zoom;
     this.initialZoom = this.zoom;
     applyZoom();
+
+    update(Flixel.getWindowWidth(), Flixel.getWindowHeight(), centerCameraOnResize);
   }
 
   /** Returns the underlying libGDX {@link Camera} used for projection. */
@@ -795,8 +805,7 @@ public class FlixelCamera extends FlixelBasic {
    * @param fillColor The color to fill with (an alpha channel is respected).
    * @param blendAlpha Whether to blend the alpha or overwrite previous contents.
    * @param fxAlpha Additional alpha multiplier (0.0 to 1.0).
-   * @param batch An active {@link Batch} to draw with (must be between
-   * begin/end).
+   * @param batch An active {@link Batch} to draw with (must be between {@code begin()} and {@code end()}).
    * @param whitePixel A 1x1 white {@link Texture} used for color drawing.
    */
   public void fill(Color fillColor, boolean blendAlpha, float fxAlpha, Batch batch, Texture whitePixel) {
@@ -1055,6 +1064,7 @@ public class FlixelCamera extends FlixelBasic {
     y = other.y;
     width = other.width;
     height = other.height;
+    centerCameraOnResize = other.centerCameraOnResize;
     scroll.set(other.scroll);
 
     target = other.target;
@@ -1074,16 +1084,11 @@ public class FlixelCamera extends FlixelBasic {
   }
 
   /**
-   * Called by the game front end on window resize. Triggers repositioning of
-   * internal display
-   * objects.
+   * Called by the game's front-end on window resize. Triggers repositioning of internal display objects.
    */
   public void onResize() {
-    viewport.update(
-      Flixel.getWindowWidth(),
-      Flixel.getWindowHeight(),
-      true
-    );
+    // Use the same logic as update(...) so x/y/width/height-based split regions remain stable.
+    update(Flixel.getWindowWidth(), Flixel.getWindowHeight(), centerCameraOnResize);
   }
 
   /**

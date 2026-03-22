@@ -6,11 +6,12 @@ import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.utils.SnapshotArray;
+import com.badlogic.gdx.utils.Array;
 
 import games.rednblack.miniaudio.MASound;
 import games.rednblack.miniaudio.loader.MASoundLoader;
 import games.rednblack.miniaudio.MiniAudio;
+
 import me.stringdotjar.flixelgdx.audio.FlixelAudioManager;
 import me.stringdotjar.flixelgdx.audio.FlixelSound;
 import me.stringdotjar.flixelgdx.backend.alert.FlixelAlerter;
@@ -20,10 +21,6 @@ import me.stringdotjar.flixelgdx.debug.FlixelDebugWatchManager;
 import me.stringdotjar.flixelgdx.group.FlixelGroupable;
 import me.stringdotjar.flixelgdx.logging.FlixelStackTraceProvider;
 import me.stringdotjar.flixelgdx.util.FlixelConstants;
-
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
 import me.stringdotjar.flixelgdx.display.FlixelCamera;
 import me.stringdotjar.flixelgdx.display.FlixelState;
 import me.stringdotjar.flixelgdx.input.keyboard.FlixelKeyInputManager;
@@ -39,11 +36,15 @@ import me.stringdotjar.flixelgdx.tween.type.FlixelNumTween;
 import me.stringdotjar.flixelgdx.tween.type.FlixelPropertyTween;
 import me.stringdotjar.flixelgdx.tween.type.FlixelVarTween;
 import me.stringdotjar.flixelgdx.signal.FlixelSignalData.StateSwitchSignalData;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.InputStream;
 import java.util.Properties;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 /**
  * Global manager and utility class for Flixel.
@@ -76,6 +77,10 @@ public final class Flixel {
 
   /** The static instance used to access the core elements of the game. */
   private static FlixelGame game;
+
+  /** The camera currently being drawn in {@link FlixelGame#draw()}, or {@code null} if not in a camera pass. */
+  @Nullable
+  private static FlixelCamera drawCamera;
 
   /** The system to use for displaying alert notifications to the user. */
   private static FlixelAlerter alerter;
@@ -155,6 +160,7 @@ public final class Flixel {
     watch = new FlixelDebugWatchManager();
     log = new FlixelLogger(FlixelLogMode.SIMPLE);
     assets = new AssetManager();
+
     // TODO: Change this out to use FlixelSound instead of MASound.
     assets.setLoader(MASound.class, new MASoundLoader(sound.getEngine(), assets.getFileHandleResolver()));
 
@@ -168,21 +174,33 @@ public final class Flixel {
   }
 
   /**
-   * Sets the current state to the provided state, and clears all active tweens by default.
+   * Sets the current state to the provided state, triggers garbage collection and
+   * clears all active tweens by default.
    *
    * @param newState The new {@code FlixelState} to set as the current state.
    */
   public static void switchState(FlixelState newState) {
-    switchState(newState, true);
+    switchState(newState, true, true);
+  }
+
+  /**
+   * Sets the current state to the provided state and triggers Java's garbage collector for memory cleanup.
+   *
+   * @param newState The new {@code FlixelState} to set as the current state.
+   * @param clearTweens Should all active tweens be cancelled and their pools be cleared?
+   */
+  public static void switchState(FlixelState newState, boolean clearTweens) {
+    switchState(newState, clearTweens, true);
   }
 
   /**
    * Sets the current state to the provided state.
    *
    * @param newState The new {@code FlixelState} to set as the current state.
-   * @param clearTweens Whether to clear all active tweens.
+   * @param clearTweens Should all active tweens be cancelled and their pools be cleared?
+   * @param triggerGC Should Java's garbage collector be triggered for memory cleanup?
    */
-  public static void switchState(FlixelState newState, boolean clearTweens) {
+  public static void switchState(FlixelState newState, boolean clearTweens, boolean triggerGC) {
     Signals.preStateSwitch.dispatch(new StateSwitchSignalData(state));
     if (!initialized) {
       throw new IllegalStateException("Flixel has not been initialized yet!");
@@ -190,8 +208,10 @@ public final class Flixel {
     if (newState == null) {
       throw new IllegalArgumentException("New state cannot be null!");
     }
+    if (triggerGC) {
+      System.gc();
+    }
     if (state != null) {
-      state.hide();
       state.destroy();
     }
     if (clearTweens) {
@@ -505,7 +525,9 @@ public final class Flixel {
   }
 
   /**
-   * Clears the active debug overlay reference. Called internally by {@link FlixelGame} during shutdown.
+   * Clears the active debug overlay reference after it has been disposed.
+   * {@link FlixelGame#dispose()} calls {@link me.stringdotjar.flixelgdx.debug.FlixelDebugOverlay#destroy()}
+   * first; this method only nulls the static handle to avoid double-dispose.
    */
   protected static void clearDebugOverlay() {
     debugOverlay = null;
@@ -584,6 +606,51 @@ public final class Flixel {
     return game.getCamera();
   }
 
+  public static FlixelCamera[] getCameras() {
+    return game.getCameras().items;
+  }
+
+  public static Array<FlixelCamera> getCamerasArray() {
+    return game.getCameras();
+  }
+
+  public static void addCamera(FlixelCamera camera) {
+    game.getCameras().add(camera);
+  }
+
+  /**
+   * The camera currently being drawn in {@link FlixelGame#draw()}, or {@code null} if not in a camera pass.
+   */
+  @Nullable
+  public static FlixelCamera getDrawCamera() {
+    return drawCamera;
+  }
+
+  protected static void setDrawCamera(@Nullable FlixelCamera camera) {
+    drawCamera = camera;
+  }
+
+  /**
+   * Whether something with the given {@code cameras} list should render during the current draw pass.
+   * {@code null} or an empty array means all cameras; otherwise, the object is drawn only if {@link #getDrawCamera()}
+   * is reference-equal to an entry.
+   */
+  public static boolean isOnDrawCamera(@Nullable FlixelCamera[] cameras) {
+    FlixelCamera active = drawCamera;
+    if (active == null) {
+      return true;
+    }
+    if (cameras == null || cameras.length == 0) {
+      return true;
+    }
+    for (FlixelCamera c : cameras) {
+      if (c == active) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public static boolean isFullscreen() {
     return Gdx.graphics.isFullscreen();
   }
@@ -644,9 +711,6 @@ public final class Flixel {
     }
   }
 
-  /**
-   * Returns the global Box2D {@link World}, or {@code null} if it has not been initialized.
-   */
   public static World getWorld() {
     if (game == null) {
       return null;
@@ -774,28 +838,22 @@ public final class Flixel {
     boolean result = false;
 
     if (obj1 instanceof FlixelGroupable<?> group1) {
-      SnapshotArray<? extends FlixelBasic> members = (SnapshotArray<? extends FlixelBasic>) group1.getMembers();
-      Object[] items = members.begin();
-      for (int i = 0, n = members.size; i < n; i++) {
-        FlixelBasic member = (FlixelBasic) items[i];
+      Array<? extends FlixelBasic> members = (Array<? extends FlixelBasic>) group1.getMembers();
+      for (FlixelBasic member : members) {
         if (member != null && member.exists) {
           result |= overlapInternal(member, obj2, notifyCallback, processCallback);
         }
       }
-      members.end();
       return result;
     }
 
     if (obj2 instanceof FlixelGroupable<?> group2) {
-      SnapshotArray<? extends FlixelBasic> members = (SnapshotArray<? extends FlixelBasic>) group2.getMembers();
-      Object[] items = members.begin();
-      for (int i = 0, n = members.size; i < n; i++) {
-        FlixelBasic member = (FlixelBasic) items[i];
+      Array<? extends FlixelBasic> members = (Array<? extends FlixelBasic>) group2.getMembers();
+      for (FlixelBasic member : members) {
         if (member != null && member.exists) {
           result |= overlapInternal(obj1, member, notifyCallback, processCallback);
         }
       }
-      members.end();
       return result;
     }
 

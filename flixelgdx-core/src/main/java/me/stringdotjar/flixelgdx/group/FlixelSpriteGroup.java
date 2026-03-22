@@ -637,7 +637,7 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelGroupable<F
    */
   @Override
   public void draw(Batch batch) {
-    if (!visible) {
+    if (!visible || !isOnDrawCamera()) {
       return;
     }
 

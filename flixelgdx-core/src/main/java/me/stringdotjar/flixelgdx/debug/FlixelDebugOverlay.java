@@ -12,7 +12,6 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
-import com.badlogic.gdx.utils.SnapshotArray;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 import me.stringdotjar.flixelgdx.Flixel;
@@ -21,6 +20,7 @@ import me.stringdotjar.flixelgdx.FlixelUpdatable;
 import me.stringdotjar.flixelgdx.display.FlixelCamera;
 import me.stringdotjar.flixelgdx.logging.FlixelDebugConsoleEntry;
 import me.stringdotjar.flixelgdx.logging.FlixelLogEntry;
+import me.stringdotjar.flixelgdx.logging.FlixelLogger;
 import me.stringdotjar.flixelgdx.util.FlixelConstants;
 import me.stringdotjar.flixelgdx.util.FlixelDebugUtil;
 
@@ -51,6 +51,9 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
 
   private static final float[] FALLBACK_COLOR = { 1f, 0.2f, 0.2f, 0.6f };
 
+  private static final String WATCH_PANEL_HEADER = "[#88CCFF]----------- Watch -----------";
+  private static final String CONSOLE_BODY_LINE_PREFIX = "[#CCCCCC]  ";
+
   private final SpriteBatch batch;
   private final ShapeRenderer shapeRenderer;
   private final OrthographicCamera camera;
@@ -61,6 +64,9 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
   private boolean visible = false;
   private boolean drawDebug = false;
 
+  /** Prevents double-dispose if {@link #dispose()} and {@link #destroy()} are both used. */
+  private boolean destroyed = false;
+
   private float statsTimer = 0f;
 
   /** Timer used to refresh watch values at a fixed rate (10 Hz). */
@@ -69,13 +75,26 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
   /** Cached formatted watch lines refreshed at 10 Hz to avoid per-frame allocations. */
   private final Array<String> cachedWatchLines = new Array<>();
 
+  /**
+   * Cached {@link FlixelDebugConsoleEntry} rendering; rebuilt at 10 Hz while the overlay is visible
+   * so {@link FlixelDebugConsoleEntry#getConsoleLines()} is not hit every frame.
+   */
+  private final Array<CachedConsoleBlock> cachedConsoleBlocks = new Array<>();
+
   private String cachedFpsText = "";
   private String cachedHeapText = "";
   private String cachedNativeText = "";
   private String cachedObjectsText = "";
+  private String cachedVisDbgText = "[#CCCCCC]VisDbg: [#FF4444]OFF";
 
-  private final Deque<FlixelLogEntry> logBuffer = new ArrayDeque<>();
+  private boolean visDbgLineInitialized = false;
+  private boolean lastDrawDebugForVisLine = false;
+
+  private final Deque<BufferedLogLine> logBuffer = new ArrayDeque<>();
   private final Consumer<FlixelLogEntry> logListener = this::onLogEntry;
+
+  /** Reused when formatting {@link FlixelLogEntry} lines for the log buffer (one allocation per new log line). */
+  private final StringBuilder logMarkupScratch = new StringBuilder(128);
 
   /** Mutable y-cursor used during watch panel rendering to avoid boxing a float. */
   private float watchDrawY;
@@ -106,11 +125,18 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
   }
 
   public void setVisible(boolean visible) {
+    if (visible && !this.visible) {
+      watchRefreshTimer = 0.11f;
+    }
     this.visible = visible;
   }
 
   public void toggleVisible() {
+    boolean was = visible;
     visible = !visible;
+    if (visible && !was) {
+      watchRefreshTimer = 0.11f;
+    }
   }
 
   public boolean isDrawDebug() {
@@ -144,6 +170,14 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
       return;
     }
 
+    if (!visDbgLineInitialized || drawDebug != lastDrawDebugForVisLine) {
+      visDbgLineInitialized = true;
+      lastDrawDebugForVisLine = drawDebug;
+      cachedVisDbgText = drawDebug
+        ? "[#CCCCCC]VisDbg: [#00FF00]ON"
+        : "[#CCCCCC]VisDbg: [#FF4444]OFF";
+    }
+
     statsTimer += elapsed;
     watchRefreshTimer += elapsed;
 
@@ -172,6 +206,51 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
           cachedWatchLines.add("[#88CCFF]" + name + ":[#FFFFFF] " + value);
         });
       }
+
+      rebuildCachedConsoleBlocks();
+    }
+  }
+
+  private void rebuildCachedConsoleBlocks() {
+    cachedConsoleBlocks.clear();
+    FlixelLogger logger = Flixel.getLogger();
+    if (logger == null) {
+      return;
+    }
+    List<FlixelDebugConsoleEntry> entries = logger.getConsoleEntries();
+    if (entries == null || entries.isEmpty()) {
+      return;
+    }
+    for (FlixelDebugConsoleEntry entry : entries) {
+      List<String> lines = entry.getConsoleLines();
+      if (lines == null || lines.isEmpty()) {
+        continue;
+      }
+      CachedConsoleBlock block = new CachedConsoleBlock();
+      block.headerMarkup = "[#AADDFF]<" + entry.getName() + ">";
+      int n = lines.size();
+      block.bodyMarkups = new String[n];
+      for (int i = 0; i < n; i++) {
+        block.bodyMarkups[i] = CONSOLE_BODY_LINE_PREFIX + lines.get(i);
+      }
+      cachedConsoleBlocks.add(block);
+    }
+  }
+
+  private String buildLogMarkup(FlixelLogEntry e) {
+    synchronized (logMarkupScratch) {
+      logMarkupScratch.setLength(0);
+      switch (e.level()) {
+        case INFO -> logMarkupScratch.append("[#CCCCCC]");
+        case WARN -> logMarkupScratch.append("[#FFFF00]");
+        case ERROR -> logMarkupScratch.append("[#FF4444]");
+      }
+      logMarkupScratch.append('[').append(e.level().name()).append("] ");
+      if (!e.tag().isEmpty()) {
+        logMarkupScratch.append('[').append(e.tag()).append("] ");
+      }
+      logMarkupScratch.append(e.message());
+      return logMarkupScratch.toString();
     }
   }
 
@@ -195,13 +274,13 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
   }
 
   /**
-   * Draws bounding boxes for all visible {@link me.stringdotjar.flixelgdx.FlixelDebugDrawable}
+   * Draws bounding boxes for all visible {@link me.stringdotjar.flixelgdx.debug.FlixelDebugDrawable}
    * instances using each game camera's projection. Each object provides its own debug
-   * color via {@link me.stringdotjar.flixelgdx.FlixelDebugDrawable#getDebugBoundingBoxColor()}.
+   * color via {@link me.stringdotjar.flixelgdx.debug.FlixelDebugDrawable#getDebugBoundingBoxColor()}.
    *
    * @param cameras The game camera array.
    */
-  public void drawBoundingBoxes(SnapshotArray<FlixelCamera> cameras) {
+  public void drawBoundingBoxes(FlixelCamera[] cameras) {
     if (!drawDebug) {
       return;
     }
@@ -209,12 +288,12 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
     Gdx.gl.glEnable(GL20.GL_BLEND);
     Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
-    FlixelCamera[] cams = cameras.begin();
-    for (int ci = 0; ci < cameras.size; ci++) {
-      FlixelCamera cam = cams[ci];
+    for (FlixelCamera cam : cameras) {
+      // Ensure bounding boxes render inside each camera's split region.
       if (cam == null) {
         continue;
       }
+      cam.getViewport().apply();
       shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
       shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
       FlixelDebugUtil.forEachDebugDrawable(drawable -> {
@@ -226,7 +305,10 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
       });
       shapeRenderer.end();
     }
-    cameras.end();
+
+    // Make sure the debug overlay UI that draws after this method isn't clipped by any other camera's viewport.
+    viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+    viewport.apply();
 
     Gdx.gl.glDisable(GL20.GL_BLEND);
   }
@@ -255,7 +337,7 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
     float y = screenH - pad;
     drawStatsPanel(pad, y, lineH);
     drawWatchPanel(screenW - pad, screenH - pad, lineH);
-    drawLogConsole(pad, lineH, screenW, screenH);
+    drawLogConsole(pad, lineH, screenH);
 
     batch.end();
   }
@@ -269,7 +351,7 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
     y -= lineH;
     drawText(cachedObjectsText, x, y);
     y -= lineH;
-    drawText("[#CCCCCC]VisDbg: " + (drawDebug ? "[#00FF00]ON" : "[#FF4444]OFF"), x, y);
+    drawText(cachedVisDbgText, x, y);
     return y;
   }
 
@@ -278,7 +360,7 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
     if (mgr == null || mgr.isEmpty() || cachedWatchLines.isEmpty()) {
       return y;
     }
-    drawTextRight("[#88CCFF]----------- Watch -----------", rightEdge, y);
+    drawTextRight(WATCH_PANEL_HEADER, rightEdge, y);
     y -= lineH;
 
     watchDrawY = y;
@@ -294,50 +376,42 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
     return watchDrawY;
   }
 
-  private void drawLogConsole(float x, float lineH, float screenW, float screenH) {
+  private void drawLogConsole(float x, float lineH, float screenH) {
     float consoleTop = screenH * 0.35f;
     float consoleBottom = lineH + 4f;
 
-    // Draw custom console entries from the top of the console area downward.
+    // Draw custom console entries using strings rebuilt at 10 Hz in {@link #update(float)}.
     float entriesBottom = consoleTop;
-    if (Flixel.getLogger() != null) {
-      float ey = consoleTop;
-      List<FlixelDebugConsoleEntry> entries = Flixel.getLogger().getConsoleEntries();
-      for (FlixelDebugConsoleEntry entry : entries) {
-        List<String> lines = entry.getConsoleLines();
-        if (lines == null || lines.isEmpty()) {
-          continue;
-        }
-        drawText("[#AADDFF]<" + entry.getName() + ">", x, ey);
+    float ey = consoleTop;
+    for (int bi = 0; bi < cachedConsoleBlocks.size; bi++) {
+      CachedConsoleBlock block = cachedConsoleBlocks.get(bi);
+      if (block == null || block.headerMarkup == null || block.bodyMarkups == null) {
+        continue;
+      }
+      drawText(block.headerMarkup, x, ey);
+      ey -= lineH;
+      for (String bodyLine : block.bodyMarkups) {
+        drawText(bodyLine, x, ey);
         ey -= lineH;
-        for (String line : lines) {
-          drawText("[#CCCCCC]  " + line, x, ey);
-          ey -= lineH;
-          if (ey < consoleBottom) {
-            break;
-          }
-        }
         if (ey < consoleBottom) {
           break;
         }
       }
-      entriesBottom = ey;
+      if (ey < consoleBottom) {
+        break;
+      }
     }
+    entriesBottom = ey;
 
-    // Draw log entries newest-at-bottom: iterate from newest to oldest, drawing upward
-    // from the bottom of the screen. This ensures the latest log is always visible.
+    // Draw log entries newest-at-bottom: markup was computed once in {@link #onLogEntry}.
     synchronized (logBuffer) {
       float y = consoleBottom;
-      Iterator<FlixelLogEntry> it = logBuffer.descendingIterator();
+      Iterator<BufferedLogLine> it = logBuffer.descendingIterator();
       while (it.hasNext()) {
-        if (y > entriesBottom) break;
-        FlixelLogEntry entry = it.next();
-        String colorTag = switch (entry.level()) {
-          case INFO -> "[#CCCCCC]";
-          case WARN -> "[#FFFF00]";
-          case ERROR -> "[#FF4444]";
-        };
-        drawText(colorTag + entry.toString(), x, y);
+        if (y > entriesBottom) {
+          break;
+        }
+        drawText(it.next().markup, x, y);
         y += lineH;
       }
     }
@@ -353,7 +427,7 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
 
   private void onLogEntry(FlixelLogEntry entry) {
     synchronized (logBuffer) {
-      logBuffer.addLast(entry);
+      logBuffer.addLast(new BufferedLogLine(buildLogMarkup(entry)));
       while (logBuffer.size() > FlixelConstants.Debug.MAX_LOG_ENTRIES) {
         logBuffer.removeFirst();
       }
@@ -367,6 +441,10 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
 
   @Override
   public void destroy() {
+    if (destroyed) {
+      return;
+    }
+    destroyed = true;
     batch.dispose();
     shapeRenderer.dispose();
     font.dispose();
@@ -376,5 +454,20 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
   @Override
   public void dispose() {
     destroy();
+  }
+
+  /** One colored line in the log console; markup is built once when the log is received. */
+  private static final class BufferedLogLine {
+    final String markup;
+
+    BufferedLogLine(String markup) {
+      this.markup = markup;
+    }
+  }
+
+  /** Cached block for {@link FlixelDebugConsoleEntry} output (rebuilt at 10 Hz). */
+  private static final class CachedConsoleBlock {
+    String headerMarkup;
+    String[] bodyMarkups;
   }
 }

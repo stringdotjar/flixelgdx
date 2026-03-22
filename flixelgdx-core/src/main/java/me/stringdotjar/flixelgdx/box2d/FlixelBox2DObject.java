@@ -1,4 +1,4 @@
-package me.stringdotjar.flixelgdx;
+package me.stringdotjar.flixelgdx.box2d;
 
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
@@ -6,6 +6,8 @@ import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
+
+import me.stringdotjar.flixelgdx.FlixelObject;
 import me.stringdotjar.flixelgdx.util.FlixelConstants;
 
 /**

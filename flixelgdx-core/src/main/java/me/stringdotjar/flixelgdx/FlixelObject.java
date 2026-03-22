@@ -1,5 +1,7 @@
 package me.stringdotjar.flixelgdx;
 
+import me.stringdotjar.flixelgdx.box2d.FlixelBox2DObject;
+import me.stringdotjar.flixelgdx.debug.FlixelDebugDrawable;
 import me.stringdotjar.flixelgdx.util.FlixelConstants;
 
 /**

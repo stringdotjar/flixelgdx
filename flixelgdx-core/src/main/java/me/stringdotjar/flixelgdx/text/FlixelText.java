@@ -712,6 +712,9 @@ public class FlixelText extends FlixelSprite {
 
   @Override
   public void draw(Batch batch) {
+    if (!isOnDrawCamera()) {
+      return;
+    }
     if (text.isEmpty()) {
       return;
     }
