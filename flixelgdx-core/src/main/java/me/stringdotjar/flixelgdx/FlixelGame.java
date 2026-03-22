@@ -26,6 +26,7 @@ import me.stringdotjar.flixelgdx.util.FlixelConstants;
 import me.stringdotjar.flixelgdx.util.FlixelDebugUtil;
 import me.stringdotjar.flixelgdx.util.FlixelRuntimeUtil;
 import org.fusesource.jansi.AnsiConsole;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * The game object used for containing the main loop and core elements of the Flixel game.
@@ -111,7 +112,10 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
   /** The main sprite batch used for rendering all sprites on screen. */
   protected SpriteBatch batch;
 
-  /** The 1x1 texture used to draw the background color of the current screen. */
+  /** The background color of the entire game's window (full-framebuffer clear before camera passes). */
+  protected Color bgColor = new Color(Color.BLACK);
+
+  /** 1×1 white texture used to draw solid fills (camera bg, FX); tinted via {@link SpriteBatch#setColor}. */
   protected Texture bgTexture;
 
   /** Where all the global cameras are stored. */
@@ -230,7 +234,6 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
     cameras.add(new FlixelCamera((int) viewSize.x, (int) viewSize.y));
     stage = new Stage(getCamera().getViewport(), batch);
 
-    // Set up the background color for the game.
     Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
     pixmap.setColor(Color.WHITE);
     pixmap.fill();
@@ -349,7 +352,7 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
   public void draw() {
     Flixel.Signals.preDraw.dispatch();
 
-    ScreenUtils.clear(Color.BLACK); // Clear the screen to refresh the screen.
+    ScreenUtils.clear(bgColor); // Clear the screen to refresh the screen.
     FlixelState state = Flixel.getState();
 
     // Loop through all cameras and draw the state/substate chain onto each camera.
@@ -360,6 +363,8 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
         batch.setProjectionMatrix(camera.getCamera().combined);
         batch.begin();
 
+        camera.fill(camera.bgColor, camera.useBgAlphaBlending, 1f, batch, bgTexture);
+
         // Walk the state/substate chain. Each state is drawn only if it is the
         // active (innermost) state or if its persistentDraw flag is true.
         FlixelState current = state;
@@ -368,15 +373,13 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
           boolean hasSubState = (sub != null);
 
           if (!hasSubState || current.persistentDraw) {
-            // Draw the state's background into this camera's view (world-space),
-            // but rely on the camera viewport (GL scissor/glViewport) for the
-            // actual on-screen split region.
-            camera.fill(current.getBgColor(), true, 1f, batch, bgTexture);
             current.draw(batch);
           }
 
           current = sub;
         }
+
+        camera.drawFX(batch, bgTexture);
 
         batch.end();
       } finally {
@@ -414,8 +417,8 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
   @Override
   public void render() {
     float rawDelta = Gdx.graphics.getDeltaTime();
-    float clampedDelta = Math.max(FlixelConstants.Graphics.MIN_ELAPSED, Math.min(rawDelta, FlixelConstants.Graphics.MAX_ELAPSED));
-    Flixel.elapsed = clampedDelta;
+    float elapsed = Math.max(FlixelConstants.Graphics.MIN_ELAPSED, Math.min(rawDelta, FlixelConstants.Graphics.MAX_ELAPSED));
+    Flixel.elapsed = elapsed;
 
     windowSize.x = Gdx.graphics.getWidth();
     windowSize.y = Gdx.graphics.getHeight();
@@ -423,7 +426,7 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
     fullscreen = Gdx.graphics.isFullscreen();
 
     if (!autoPause || isFocused) {
-      update(clampedDelta);
+      update(elapsed);
     }
     draw();
   }
@@ -594,7 +597,7 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
    * @return The first camera in the list.
    */
   public FlixelCamera getCamera() {
-    Vector2 windowSize = Flixel.getWindowSize();
+    Vector2 windowSize = Flixel.getViewSize();
     if (cameras == null) {
       cameras = new Array<>(FlixelCamera[]::new);
     }
@@ -625,6 +628,14 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
     return viewSize;
   }
 
+  public int getViewWidth() {
+    return (int) viewSize.x;
+  }
+
+  public int getViewHeight() {
+    return (int) viewSize.y;
+  }
+
   public Vector2 getWindowSize() {
     return windowSize;
   }
@@ -653,8 +664,15 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
     return batch;
   }
 
-  public Texture getBgTexture() {
-    return bgTexture;
+  public Color getBgColor() {
+    return bgColor;
+  }
+
+  public void setBgColor(@NotNull Color bgColor) {
+    if (bgColor == null) {
+      return;
+    }
+    this.bgColor.set(bgColor);
   }
 
   public boolean isMinimized() {

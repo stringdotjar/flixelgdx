@@ -57,13 +57,13 @@ public final class Flixel {
   /** The current {@code FlixelState} being displayed. */
   private static FlixelState state;
 
-  /** Keyboard input manager: use {@code Flixel.keys.keyPressed()}, {@code Flixel.keys.keyJustPressed()}, etc. */
+  /** Keyboard input manager: use {@code Flixel.keys.pressed(key)}, {@code Flixel.keys.justPressed(key)}, etc. */
   public static FlixelKeyInputManager keys;
 
   /** Central audio manager: use {@code Flixel.sound.play()}, {@code Flixel.sound.playMusic()}, etc. */
   public static FlixelAudioManager sound;
 
-  /** The debug watch manager. Access via {@code Flixel.watch.add(...)}, {@code Flixel.watch.addQuick(...)}, etc. */
+  /** The debug watch manager. Access via {@code Flixel.watch.add(...)}, {@code Flixel.watch.remove(...)}, etc. */
   public static FlixelDebugWatchManager watch;
 
   /** The default logger used by {@link #info}, {@link #warn}, and {@link #error}. */
@@ -378,14 +378,26 @@ public final class Flixel {
   }
 
   public static Vector2 getWindowSize() {
-    return game.viewSize;
+    return game.windowSize;
   }
 
   public static int getWindowWidth() {
-    return (int) game.viewSize.x;
+    return (int) game.windowSize.x;
   }
 
   public static int getWindowHeight() {
+    return (int) game.windowSize.y;
+  }
+
+  public static Vector2 getViewSize() {
+    return game.viewSize;
+  }
+
+  public static int getViewWidth() {
+    return (int) game.viewSize.x;
+  }
+
+  public static int getViewHeight() {
     return (int) game.viewSize.y;
   }
 

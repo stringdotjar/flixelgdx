@@ -1,5 +1,6 @@
 package me.stringdotjar.flixelgdx.display;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -12,15 +13,17 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelBasic;
+import me.stringdotjar.flixelgdx.FlixelGame;
 import me.stringdotjar.flixelgdx.FlixelObject;
 
 /**
  * A powerful camera class that allows you to control the camera's position, zoom, and more.
  *
  * <p>
- * All cameras are stored and managed by {@code FlixelGame}. By default, one camera is created automatically, that
- * is the same size as the window. You can add more cameras or even replace the
- * main camera using utilities in {@code FlixelGame}.
+ * In a full FlixelGDX game, cameras are usually managed by {@link me.stringdotjar.flixelgdx.FlixelGame}.
+ * You can also use {@code FlixelCamera} in a plain libGDX {@code ApplicationListener}. When
+ * {@link me.stringdotjar.flixelgdx.Flixel#getGame()} is {@code null}, window size and follow framerate fall back to
+ * {@link Gdx#graphics} (call {@link #update(int, int, boolean)} from {@code resize} as usual).
  *
  * <p>
  * Every camera wraps a libGDX {@link Camera} and {@link Viewport} internally. By default, an
@@ -192,7 +195,7 @@ public class FlixelCamera extends FlixelBasic {
    * {@link OrthographicCamera} and {@link FitViewport}.
    */
   public FlixelCamera() {
-    this(0f, 0f, Flixel.getWindowWidth(), Flixel.getWindowHeight(), 0f);
+    this(0f, 0f, resolveWindowWidth(), resolveWindowHeight(), 0f);
   }
 
   /**
@@ -270,8 +273,8 @@ public class FlixelCamera extends FlixelBasic {
     super();
     this.x = x;
     this.y = y;
-    this.width = (width <= 0) ? Flixel.getWindowWidth() : width;
-    this.height = (height <= 0) ? Flixel.getWindowHeight() : height;
+    this.width = (width <= 0) ? resolveWindowWidth() : width;
+    this.height = (height <= 0) ? resolveWindowHeight() : height;
 
     if (viewport != null) {
       this.viewport = viewport;
@@ -288,7 +291,7 @@ public class FlixelCamera extends FlixelBasic {
     this.initialZoom = this.zoom;
     applyZoom();
 
-    update(Flixel.getWindowWidth(), Flixel.getWindowHeight(), centerCameraOnResize);
+    update(resolveWindowWidth(), resolveWindowHeight(), centerCameraOnResize);
   }
 
   /** Returns the underlying libGDX {@link Camera} used for projection. */
@@ -310,6 +313,13 @@ public class FlixelCamera extends FlixelBasic {
   }
 
   /**
+   * When {@code true}, {@link #update(int, int, boolean)} fits this camera into the screen rectangle
+   * {@code (x, y, width, height)} (see {@link #x}) instead of the full window. When {@code false}, placement
+   * is inferred when {@link Flixel#getGame()} has multiple cameras (horizontal/vertical strips, PiP, etc.).
+   */
+  public boolean useSubScreenViewport = false;
+
+  /**
    * Updates the viewport in response to a window resize event.
    *
    * @param screenWidth The new screen width in pixels.
@@ -317,7 +327,11 @@ public class FlixelCamera extends FlixelBasic {
    * @param centerCamera Whether to re-center the camera in the viewport.
    */
   public void update(int screenWidth, int screenHeight, boolean centerCamera) {
-    viewport.update(screenWidth, screenHeight, centerCamera);
+    if (shouldUseSubScreenViewport(screenWidth, screenHeight)) {
+      updateSubScreenViewport(screenWidth, screenHeight, centerCamera);
+    } else {
+      viewport.update(screenWidth, screenHeight, centerCamera);
+    }
   }
 
   /** Returns the world width of the underlying viewport. */
@@ -463,7 +477,7 @@ public class FlixelCamera extends FlixelBasic {
       }
     }
 
-    float lerpFactor = 1f - (float) Math.pow(1f - followLerp, elapsed * Flixel.getGame().getFramerate());
+    float lerpFactor = 1f - (float) Math.pow(1f - followLerp, elapsed * resolveTargetFramerate());
     scroll.x = MathUtils.lerp(scroll.x, desiredX, lerpFactor);
     scroll.y = MathUtils.lerp(scroll.y, desiredY, lerpFactor);
   }
@@ -809,9 +823,25 @@ public class FlixelCamera extends FlixelBasic {
    * @param whitePixel A 1x1 white {@link Texture} used for color drawing.
    */
   public void fill(Color fillColor, boolean blendAlpha, float fxAlpha, Batch batch, Texture whitePixel) {
-    float a = blendAlpha ? fillColor.a * fxAlpha : fxAlpha;
-    batch.setColor(fillColor.r, fillColor.g, fillColor.b, a);
-    batch.draw(whitePixel, scroll.x, scroll.y, getViewWidth(), getViewHeight());
+    float r = fillColor.r;
+    float g = fillColor.g;
+    float b = fillColor.b;
+    float a = fillColor.a * fxAlpha;
+    if (blendAlpha) {
+      if (a <= 0f) {
+        return;
+      }
+      batch.setColor(r, g, b, a);
+      batch.draw(whitePixel, scroll.x, scroll.y, getViewWidth(), getViewHeight());
+    } else {
+      boolean wasBlending = batch.isBlendingEnabled();
+      batch.disableBlending();
+      batch.setColor(r, g, b, a);
+      batch.draw(whitePixel, scroll.x, scroll.y, getViewWidth(), getViewHeight());
+      if (wasBlending) {
+        batch.enableBlending();
+      }
+    }
     batch.setColor(Color.WHITE);
   }
 
@@ -1064,6 +1094,7 @@ public class FlixelCamera extends FlixelBasic {
     y = other.y;
     width = other.width;
     height = other.height;
+    useSubScreenViewport = other.useSubScreenViewport;
     centerCameraOnResize = other.centerCameraOnResize;
     scroll.set(other.scroll);
 
@@ -1088,7 +1119,7 @@ public class FlixelCamera extends FlixelBasic {
    */
   public void onResize() {
     // Use the same logic as update(...) so x/y/width/height-based split regions remain stable.
-    update(Flixel.getWindowWidth(), Flixel.getWindowHeight(), centerCameraOnResize);
+    update(resolveWindowWidth(), resolveWindowHeight(), centerCameraOnResize);
   }
 
   /**
@@ -1131,6 +1162,86 @@ public class FlixelCamera extends FlixelBasic {
 
   public float getFadeAlpha() {
     return fadeAlpha;
+  }
+
+  /**
+   * Window width for defaults: {@link Flixel#getViewWidth()} when {@link Flixel#getGame()} exists, else
+   * {@link com.badlogic.gdx.Graphics#getWidth()}.
+   */
+  private static int resolveWindowWidth() {
+    if (Flixel.getGame() != null) {
+      return Flixel.getViewWidth();
+    }
+    if (Gdx.graphics != null) {
+      return Math.max(1, Gdx.graphics.getWidth());
+    }
+    return 1;
+  }
+
+  /**
+   * Window height for defaults: {@link Flixel#getViewHeight()} when {@link Flixel#getGame()} exists, else
+   * {@link com.badlogic.gdx.Graphics#getHeight()}.
+   */
+  private static int resolveWindowHeight() {
+    if (Flixel.getGame() != null) {
+      return Flixel.getViewHeight();
+    }
+    if (Gdx.graphics != null) {
+      return Math.max(1, Gdx.graphics.getHeight());
+    }
+    return 1;
+  }
+
+  /** Target updates per second for follow lerp; matches {@link FlixelGame#getFramerate()} when in FlixelGDX. */
+  private static float resolveTargetFramerate() {
+    FlixelGame game = Flixel.getGame();
+    if (game != null) {
+      return game.getFramerate();
+    }
+    if (Gdx.graphics != null) {
+      int hz = Gdx.graphics.getDisplayMode().refreshRate;
+      if (hz > 0) {
+        return hz;
+      }
+    }
+    return 60f;
+  }
+
+  /**
+   * Fits the world into {@link #width}x{@link #height} pixels, then places that rectangle at {@link #x},{@link #y}
+   * (top-left origin, Y down, converted to libGDX bottom-left for {@code glViewport}).
+   */
+  private void updateSubScreenViewport(int screenWidth, int screenHeight, boolean centerCamera) {
+    int rx = Math.round(x);
+    int ryTop = Math.round(y);
+    int rw = width > 0 ? width : screenWidth;
+    int rh = height > 0 ? height : screenHeight;
+    int regionBottomY = Math.max(0, screenHeight - ryTop - rh);
+    viewport.update(rw, rh, centerCamera);
+    viewport.setScreenBounds(
+      viewport.getScreenX() + rx,
+      viewport.getScreenY() + regionBottomY,
+      viewport.getScreenWidth(),
+      viewport.getScreenHeight());
+    viewport.apply(centerCamera);
+  }
+
+  private boolean shouldUseSubScreenViewport(int screenWidth, int screenHeight) {
+    if (useSubScreenViewport) {
+      return true;
+    }
+    FlixelGame game = Flixel.getGame();
+    if (game == null || game.getCameras() == null || game.getCameras().size <= 1) {
+      return false;
+    }
+    boolean coversFullWindow = x <= 0f && y <= 0f && width >= screenWidth && height >= screenHeight;
+    if (coversFullWindow) {
+      return false;
+    }
+    boolean horizontalStrip = width < screenWidth && Math.abs(height - screenHeight) <= 1;
+    boolean verticalStrip = height < screenHeight && Math.abs(width - screenWidth) <= 1;
+    boolean positioned = x != 0f || y != 0f;
+    return horizontalStrip || verticalStrip || positioned;
   }
 
   /**
