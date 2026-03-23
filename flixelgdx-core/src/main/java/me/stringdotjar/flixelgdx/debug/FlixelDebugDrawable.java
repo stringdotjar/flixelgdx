@@ -1,4 +1,6 @@
-package me.stringdotjar.flixelgdx;
+package me.stringdotjar.flixelgdx.debug;
+
+import me.stringdotjar.flixelgdx.FlixelObject;
 
 /**
  * Interface for objects that can draw a debug bounding box in the
