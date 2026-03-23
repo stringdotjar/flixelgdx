@@ -272,6 +272,9 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
 
   @Override
   public void resize(int width, int height) {
+    windowSize.x = width;
+    windowSize.y = height;
+
     for (FlixelCamera camera : cameras) {
       camera.update(width, height, camera.centerCameraOnResize);
     }
