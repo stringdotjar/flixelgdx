@@ -3,8 +3,8 @@ package me.stringdotjar.flixelgdx.backend.lwjgl3.runtime.reflect;
 import com.esotericsoftware.reflectasm.FieldAccess;
 import com.esotericsoftware.reflectasm.MethodAccess;
 
-import me.stringdotjar.flixelgdx.backend.runtime.reflect.FlixelDefaultReflectionHandler;
-import me.stringdotjar.flixelgdx.backend.runtime.reflect.FlixelReflection;
+import me.stringdotjar.flixelgdx.backend.reflect.FlixelDefaultReflectionHandler;
+import me.stringdotjar.flixelgdx.backend.reflect.FlixelReflection;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;

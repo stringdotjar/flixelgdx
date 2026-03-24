@@ -6,8 +6,8 @@ import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelGame;
 import me.stringdotjar.flixelgdx.backend.ios.alert.FlixelIOSAlerter;
 import me.stringdotjar.flixelgdx.backend.jvm.logging.FlixelDefaultStackTraceProvider;
+import me.stringdotjar.flixelgdx.backend.reflect.FlixelDefaultReflectionHandler;
 import me.stringdotjar.flixelgdx.backend.runtime.FlixelRuntimeMode;
-import me.stringdotjar.flixelgdx.backend.runtime.reflect.FlixelDefaultReflectionHandler;
 
 /**
  * Launches the iOS (RoboVM) version of the FlixelGDX game.

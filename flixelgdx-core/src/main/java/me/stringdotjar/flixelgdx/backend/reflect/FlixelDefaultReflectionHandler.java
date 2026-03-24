@@ -1,4 +1,4 @@
-package me.stringdotjar.flixelgdx.backend.runtime.reflect;
+package me.stringdotjar.flixelgdx.backend.reflect;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
