@@ -52,7 +52,7 @@ public class FlixelIOSLauncher {
    * }
    * }</pre>
    *
-   * @param game        The game instance to launch (e.g. {@code new MyGame(...)}).
+   * @param game The game instance to launch (e.g. {@code new MyGame(...)}).
    * @param runtimeMode The {@link FlixelRuntimeMode} for this session (TEST, DEBUG, or RELEASE).
    * @return The configured {@link IOSApplication} to return from {@code createApplication()}.
    */

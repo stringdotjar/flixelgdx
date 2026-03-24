@@ -12,6 +12,5 @@ java {
 
 dependencies {
     api project(':flixelgdx-core')
-    implementation "com.esotericsoftware:reflectasm:$reflectasmVersion"
 }
 
