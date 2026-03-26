@@ -1,8 +1,16 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx.audio;
 
 import games.rednblack.miniaudio.MAGroup;
 import games.rednblack.miniaudio.MASound;
 import games.rednblack.miniaudio.MiniAudio;
+import me.stringdotjar.flixelgdx.FlixelDestroyable;
 import me.stringdotjar.flixelgdx.util.FlixelPathsUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -17,7 +25,7 @@ import com.badlogic.gdx.utils.Disposable;
  * sound effects and music, global master volume, and automatic pause when the game loses focus
  * (and resume when it regains focus).
  */
-public class FlixelAudioManager implements Disposable {
+public class FlixelAudioManager implements FlixelDestroyable, Disposable {
 
   private final MiniAudio engine;
   private final MAGroup sfxGroup;
@@ -221,12 +229,8 @@ public class FlixelAudioManager implements Disposable {
     musicGroup.play();
   }
 
-  /**
-   * Disposes the current music (if any), all groups, and the engine. Call once when the game is
-   * shutting down. After this, the manager must not be used.
-   */
   @Override
-  public void dispose() {
+  public void destroy() {
     if (music != null) {
       music.dispose();
       music = null;
@@ -234,5 +238,10 @@ public class FlixelAudioManager implements Disposable {
     sfxGroup.dispose();
     musicGroup.dispose();
     engine.dispose();
+  }
+
+  @Override
+  public void dispose() {
+    destroy();
   }
 }

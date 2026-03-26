@@ -1,23 +1,23 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx;
 
 import com.badlogic.gdx.Application.ApplicationType;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.Array;
 
-import games.rednblack.miniaudio.MASound;
-import games.rednblack.miniaudio.loader.MASoundLoader;
 import games.rednblack.miniaudio.MiniAudio;
-
-import me.stringdotjar.flixelgdx.assets.FlixelAsset;
-import me.stringdotjar.flixelgdx.assets.FlixelStringAssetLoader;
+import me.stringdotjar.flixelgdx.asset.FlixelAssetManager;
 import me.stringdotjar.flixelgdx.audio.FlixelAudioManager;
 import me.stringdotjar.flixelgdx.audio.FlixelSound;
-import me.stringdotjar.flixelgdx.audio.FlixelSoundSource;
-import me.stringdotjar.flixelgdx.audio.FlixelSoundSourceLoader;
 import me.stringdotjar.flixelgdx.backend.alert.FlixelAlerter;
 import me.stringdotjar.flixelgdx.backend.reflect.FlixelReflection;
 import me.stringdotjar.flixelgdx.backend.reflect.FlixelUnsupportedReflectionHandler;
@@ -27,7 +27,6 @@ import me.stringdotjar.flixelgdx.debug.FlixelDebugWatchManager;
 import me.stringdotjar.flixelgdx.group.FlixelGroupable;
 import me.stringdotjar.flixelgdx.logging.FlixelStackTraceProvider;
 import me.stringdotjar.flixelgdx.util.FlixelConstants;
-import me.stringdotjar.flixelgdx.graphics.FlixelGraphic;
 import me.stringdotjar.flixelgdx.input.keyboard.FlixelKeyInputManager;
 import me.stringdotjar.flixelgdx.logging.FlixelLogMode;
 import me.stringdotjar.flixelgdx.logging.FlixelLogger;
@@ -56,34 +55,43 @@ import java.util.function.Supplier;
  *
  * <p>Use this for switching screens, and use {@link #sound} for playing sounds and music
  * ({@code Flixel.sound.playSound()}, {@code Flixel.sound.playMusic()}, etc.).
+ * Preload assets with {@link me.stringdotjar.flixelgdx.asset.FlixelAssets} and {@link me.stringdotjar.flixelgdx.asset.FlixelAsset}.
  */
 public final class Flixel {
 
   /** The current {@code FlixelState} being displayed. */
+  @Nullable
   private static FlixelState state;
 
-  /** Keyboard input manager: use {@code Flixel.keys.pressed(key)}, {@code Flixel.keys.justPressed(key)}, etc. */
+  /** Keyboard input manager. Use {@code Flixel.keys.pressed(key)}, {@code Flixel.keys.justPressed(key)}, etc. */
+  @NotNull
   public static FlixelKeyInputManager keys;
 
-  /** Central audio manager: use {@code Flixel.sound.play()}, {@code Flixel.sound.playMusic()}, etc. */
+  /** Central audio manager. Use {@code Flixel.sound.play()}, {@code Flixel.sound.playMusic()}, etc. */
+  @NotNull
   public static FlixelAudioManager sound;
 
+  /** Central asset manager. Use this for loading, caching and managing assets. */
+  @NotNull
+  public static FlixelAssetManager assets;
+
   /** The debug watch manager. Access via {@code Flixel.watch.add(...)}, {@code Flixel.watch.remove(...)}, etc. */
+  @NotNull
   public static FlixelDebugWatchManager watch;
 
   /** The default logger used by {@link #info}, {@link #warn}, and {@link #error}. */
+  @NotNull
   public static FlixelLogger log;
 
   /** Global reflection service. Use {@code Flixel.reflect.hasField(target, fieldName)}, etc. */
+  @NotNull
   public static FlixelReflection reflect = new FlixelUnsupportedReflectionHandler();
-
-  /** The global asset manager used to preload and cache assets. */
-  public static AssetManager assets;
 
   /** Should the game use antialiasing globally? */
   private static boolean antialiasing = false;
 
   /** The static instance used to access the core elements of the game. */
+  @NotNull
   private static FlixelGame game;
 
   /** The camera currently being drawn in {@link FlixelGame#draw()}, or {@code null} if not in a camera pass. */
@@ -91,12 +99,14 @@ public final class Flixel {
   private static FlixelCamera drawCamera;
 
   /** The system to use for displaying alert notifications to the user. */
+  @NotNull
   private static FlixelAlerter alerter;
 
   /** Has the global manager been initialized yet? */
   private static boolean initialized = false;
 
   /** System used to detect where a log comes from when a log is created. **/
+  @NotNull
   private static FlixelStackTraceProvider stackTraceProvider;
 
   /** Whether the game is running in debug mode. Can only be set once from the launcher. */
@@ -140,39 +150,35 @@ public final class Flixel {
    * Initializes the entire Flixel system.
    *
    * <p>This gets called BEFORE {@link FlixelGame#create()} is executed.
-   * It sets up every core system that Flixel needs to work, such as the asset manager, audio system, key input manager,
+   * It sets up every core system that Flixel needs to work, such as {@link FlixelAssetManager},
+   * audio system, key input manager,
    * logger, backend systems for different platforms, and more.
    *
    * <p>This can only be called once. If attempted to be executed again, the game will throw an {@link IllegalStateException}.
    *
    * @param gameInstance The {@link FlixelGame} instance to use.
-   * @param alertSystem The {@link FlixelAlerter} instance to use for displaying alert notifications to the user.
-   * @param stackTraceProviderSystem The {@link FlixelStackTraceProvider} instance to use for providing stack traces on logs.
    * @throws IllegalStateException If Flixel has already been initialized.
    */
-  public static void initialize(@NotNull FlixelGame gameInstance,
-                                @NotNull FlixelAlerter alertSystem,
-                                @NotNull FlixelStackTraceProvider stackTraceProviderSystem) {
+  public static void initialize(@NotNull FlixelGame gameInstance) {
     if (initialized) {
       throw new IllegalStateException("Flixel has already been initialized!");
     }
 
     // Set the game and backend systems.
     game = gameInstance;
-    alerter = alertSystem;
-    stackTraceProvider = stackTraceProviderSystem;
+    if (alerter == null) {
+      throw new IllegalStateException("Flixel alerter not set. Call Flixel.setAlerter(...) before Flixel.initialize(...).");
+    }
+    if (stackTraceProvider == null) {
+      throw new IllegalStateException("Flixel stack trace provider not set. Call Flixel.setStackTraceProvider(...) before Flixel.initialize(...).");
+    }
 
     // Initialize the core systems.
     keys = new FlixelKeyInputManager();
     sound = new FlixelAudioManager();
     watch = new FlixelDebugWatchManager();
     log = new FlixelLogger(FlixelLogMode.SIMPLE);
-    assets = new AssetManager();
-
-    // Register asset loaders.
-    assets.setLoader(MASound.class, new MASoundLoader(sound.getEngine(), assets.getFileHandleResolver()));
-    assets.setLoader(String.class, new FlixelStringAssetLoader(assets.getFileHandleResolver())); // JSON/YAML/etc as raw strings.
-    assets.setLoader(FlixelSoundSource.class, new FlixelSoundSourceLoader(assets.getFileHandleResolver()));
+    assets = new FlixelAssetManager();
 
     // Register default tween types.
     FlixelTween.getGlobalManager()
@@ -181,6 +187,38 @@ public final class Flixel {
       .registerTweenType(FlixelNumTween.class, FlixelNumTweenBuilder.class, () -> new FlixelNumTween(0, 0, null, null));
 
     initialized = true;
+  }
+
+  /**
+   * Sets the system used for displaying alert notifications to the user.
+   *
+   * <p>This must be set before {@link #initialize(FlixelGame)}. Calling it after initialization
+   * throws an exception.
+   */
+  public static void setAlerter(@NotNull FlixelAlerter alertSystem) {
+    if (initialized) {
+      throw new IllegalStateException("Cannot change alerter after Flixel has been initialized.");
+    }
+    if (alertSystem == null) {
+      throw new IllegalArgumentException("Alert system cannot be null.");
+    }
+    alerter = alertSystem;
+  }
+
+  /**
+   * Sets the system used for providing stack traces on logs.
+   *
+   * <p>This must be set before {@link #initialize(FlixelGame)}. Calling it after initialization
+   * throws an exception.
+   */
+  public static void setStackTraceProvider(@NotNull FlixelStackTraceProvider provider) {
+    if (initialized) {
+      throw new IllegalStateException("Cannot change stack trace provider after Flixel has been initialized.");
+    }
+    if (provider == null) {
+      throw new IllegalArgumentException("Stack trace provider cannot be null.");
+    }
+    stackTraceProvider = provider;
   }
 
   /**
@@ -225,8 +263,9 @@ public final class Flixel {
       state.destroy();
     }
 
-    FlixelGraphic.clearNonPersist();
-    FlixelAsset.clearNonPersist();
+    if (assets != null) {
+      assets.clearNonPersist();
+    }
     if (clearTweens) {
       FlixelTween.getGlobalManager()
         .getActiveTweens()
@@ -420,10 +459,6 @@ public final class Flixel {
 
   public static float getMasterVolume() {
     return sound.getMasterVolume();
-  }
-
-  public static AssetManager getAssets() {
-    return assets;
   }
 
   /**

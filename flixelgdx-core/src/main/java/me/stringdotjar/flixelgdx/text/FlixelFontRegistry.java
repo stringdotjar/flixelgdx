@@ -1,7 +1,17 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx.text;
 
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+
+import me.stringdotjar.flixelgdx.FlixelDestroyable;
+
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
@@ -64,7 +74,7 @@ public final class FlixelFontRegistry {
 
     Entry existing = entries.get(id);
     if (existing != null) {
-      existing.dispose();
+      existing.destroy();
     }
     entries.put(id, new Entry(fontFile));
   }
@@ -79,7 +89,7 @@ public final class FlixelFontRegistry {
   public static void unregister(String id) {
     Entry removed = entries.remove(id);
     if (removed != null) {
-      removed.dispose();
+      removed.destroy();
     }
     if (id != null && id.equals(defaultFontId)) {
       defaultFontId = null;
@@ -171,7 +181,7 @@ public final class FlixelFontRegistry {
    */
   public static void dispose() {
     for (Entry entry : entries.values()) {
-      entry.dispose();
+      entry.destroy();
     }
     entries.clear();
     defaultFontId = null;
@@ -186,7 +196,7 @@ public final class FlixelFontRegistry {
   }
 
   /** Holds the file handle and a lazily-created generator for a single registered font. */
-  private static final class Entry {
+  private static final class Entry implements FlixelDestroyable {
 
     final FileHandle fontFile;
     FreeTypeFontGenerator generator;
@@ -202,7 +212,8 @@ public final class FlixelFontRegistry {
       return generator;
     }
 
-    void dispose() {
+    @Override
+    public void destroy() {
       if (generator != null) {
         generator.dispose();
         generator = null;

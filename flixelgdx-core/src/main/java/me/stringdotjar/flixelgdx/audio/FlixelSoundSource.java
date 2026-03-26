@@ -1,9 +1,17 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx.audio;
 
 import com.badlogic.gdx.files.FileHandle;
 import games.rednblack.miniaudio.MAGroup;
 import games.rednblack.miniaudio.MASound;
 import me.stringdotjar.flixelgdx.Flixel;
+import me.stringdotjar.flixelgdx.asset.FlixelSource;
 import me.stringdotjar.flixelgdx.util.FlixelPathsUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,7 +22,7 @@ import org.jetbrains.annotations.Nullable;
  * <p>Do not cache {@link FlixelSound} playback objects directly: a playback object has mutable state
  * (volume/pan/time/playing) and cannot be safely shared across callers or overlapping plays.
  */
-public final class FlixelSoundSource {
+public final class FlixelSoundSource implements FlixelSource<FlixelSoundSource> {
 
   @NotNull
   private final String assetKey;
@@ -33,9 +41,14 @@ public final class FlixelSoundSource {
     this.external = external;
   }
 
-  @NotNull
+  @Override
   public String getAssetKey() {
     return assetKey;
+  }
+
+  @Override
+  public Class<FlixelSoundSource> getType() {
+    return FlixelSoundSource.class;
   }
 
   public boolean isExternal() {

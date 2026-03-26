@@ -1,6 +1,6 @@
 module me.stringdotjar.flixelgdx.core {
   exports me.stringdotjar.flixelgdx;
-  exports me.stringdotjar.flixelgdx.assets;
+  exports me.stringdotjar.flixelgdx.asset;
   exports me.stringdotjar.flixelgdx.audio;
   exports me.stringdotjar.flixelgdx.backend.alert;
   exports me.stringdotjar.flixelgdx.backend.runtime;

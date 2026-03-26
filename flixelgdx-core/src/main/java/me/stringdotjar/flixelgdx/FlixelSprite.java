@@ -1,3 +1,10 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx;
 
 import com.badlogic.gdx.files.FileHandle;
@@ -180,7 +187,7 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
   }
 
   /**
-   * Loads a cached graphic by key. The texture must be preloaded via {@link FlixelGraphic#queueLoad()}
+   * Loads a cached graphic by key. The texture can be preloaded via {@link FlixelGraphic#queueLoad()}
    * and {@code Flixel.assets.update()} in a loading state.
    *
    * <p>This method falls back to a synchronous load if the texture is not loaded yet.
@@ -196,7 +203,7 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
   }
 
   /**
-   * Loads a cached graphic by key. The texture must be preloaded via {@link FlixelGraphic#queueLoad()}
+   * Loads a cached graphic by key. The texture can be preloaded via {@link FlixelGraphic#queueLoad()}
    * and {@code Flixel.assets.update()} in a loading state.
    *
    * <p>This method falls back to a synchronous load if the texture
@@ -213,7 +220,7 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
   }
 
   /**
-   * Loads a cached graphic by key. The texture must be preloaded via {@link FlixelGraphic#queueLoad()}
+   * Loads a cached graphic by key. The texture can be preloaded via {@link FlixelGraphic#queueLoad()}
    * and {@code Flixel.assets.update()} in a loading state.
    *
    * <p>This method falls back to a synchronous load if the texture is not loaded yet.
@@ -230,9 +237,9 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
   }
 
   /**
-   * Loads a graphic from a FlixelGraphic.
+   * Loads a graphic from a {@link FlixelGraphic}.
    *
-   * @param g The FlixelGraphic to load.
+   * @param g The {@link FlixelGraphic} to load.
    * @param frameWidth The width of the graphic.
    * @param frameHeight The height of the graphic.
    * @return {@code this} sprite for chaining.
