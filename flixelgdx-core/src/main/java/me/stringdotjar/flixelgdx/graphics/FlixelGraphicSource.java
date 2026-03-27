@@ -11,7 +11,7 @@ import com.badlogic.gdx.graphics.Texture;
 
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.asset.FlixelAssetManager;
-import me.stringdotjar.flixelgdx.asset.FlixelSource;
+import me.stringdotjar.flixelgdx.asset.FlixelWrapperSource;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -19,8 +19,11 @@ import org.jetbrains.annotations.NotNull;
  * Cached graphic "source" (asset) that can provide a pooled {@link FlixelGraphic} wrapper.
  *
  * <p>Ownership is explicit: {@link #get()} does not retain, while {@link #acquire()} retains.
+ *
+ * <p>Uses generic {@link FlixelAssetManager#obtainWrapper(String, Class)} via {@link FlixelWrapperSource};
+ * the loaded texture is required with {@link #require(FlixelAssetManager)} (same as {@link #requireTexture(FlixelAssetManager)}).
  */
-public final class FlixelGraphicSource implements FlixelSource<FlixelGraphicSource> {
+public final class FlixelGraphicSource implements FlixelWrapperSource<Texture, FlixelGraphic> {
 
   @NotNull
   private final String assetKey;
@@ -38,26 +41,34 @@ public final class FlixelGraphicSource implements FlixelSource<FlixelGraphicSour
   }
 
   @Override
-  public Class<FlixelGraphicSource> getType() {
-    return FlixelGraphicSource.class;
+  public Class<Texture> getType() {
+    return Texture.class;
+  }
+
+  @Override
+  public Class<FlixelGraphic> wrapperType() {
+    return FlixelGraphic.class;
   }
 
   /** Returns the pooled wrapper for this asset key (does not retain). */
   @NotNull
   public FlixelGraphic get() {
-    return Flixel.ensureAssets().obtainGraphic(assetKey);
+    return obtainWrapper(Flixel.ensureAssets());
   }
 
   /** Returns the pooled wrapper and retains it (explicit ownership). */
   @NotNull
   public FlixelGraphic acquire() {
-    return Flixel.ensureAssets().obtainGraphic(assetKey).retain();
+    return obtainWrapper(Flixel.ensureAssets()).retain();
   }
 
-  /** Requires the underlying texture to already be loaded, then returns it. */
+  /**
+   * Requires the underlying texture to already be loaded, then returns it.
+   *
+   * <p>Equivalent to {@link #require(FlixelAssetManager)}.
+   */
   @NotNull
   public Texture requireTexture(@NotNull FlixelAssetManager assets) {
-    return assets.requireTexture(assetKey);
+    return require(assets);
   }
 }
-

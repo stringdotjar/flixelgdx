@@ -10,6 +10,7 @@ package me.stringdotjar.flixelgdx.audio;
 import games.rednblack.miniaudio.MASound;
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.FlixelBasic;
+import me.stringdotjar.flixelgdx.asset.FlixelAsset;
 import me.stringdotjar.flixelgdx.signal.FlixelSignal;
 import me.stringdotjar.flixelgdx.tween.FlixelTween;
 import me.stringdotjar.flixelgdx.tween.settings.FlixelTweenSettings;
@@ -30,15 +31,27 @@ import com.badlogic.gdx.files.FileHandle;
  *
  * @see <a href="https://api.haxeflixel.com/flixel/sound/FlxSound.html">FlxSound (HaxeFlixel)</a>
  * @see me.stringdotjar.flixelgdx.asset.FlixelAssetManager#resolveAudioPath(String)
+ *
+ * <p>This class implements {@link FlixelAsset}{@code <MASound>} for a shared refcount / {@code persist}
+ * contract. {@link #persist} controls whether this {@code FlixelSound} is treated as long-lived in game state
+ * (e.g. not killed on substate switches). It is separate from {@link me.stringdotjar.flixelgdx.asset.FlixelAssetManager#clearNonPersist()},
+ * which clears <em>pooled</em> typed handles and wrappers on the global asset manager—not miniaudio instances created
+ * directly from a {@link com.badlogic.gdx.files.FileHandle}. Use {@link #retain()} / {@link #release()} if you mirror
+ * pooled-asset semantics for sounds you manage manually.
  */
-public class FlixelSound extends FlixelBasic {
+public class FlixelSound extends FlixelBasic implements FlixelAsset<MASound> {
 
   private static final float SEC_TO_MS = 1000f;
   private static final float MS_TO_SEC = 1f / SEC_TO_MS;
 
+  @NotNull
+  private final String assetKey;
+
   /** The underlying miniaudio sound. Use {@link #getMASound()} for external access. */
   @NotNull
   private final MASound sound;
+
+  private int refCount;
 
   /** Cached pitch (MASound has no getPitch). */
   private float pitch = 1f;
@@ -87,6 +100,7 @@ public class FlixelSound extends FlixelBasic {
   public FlixelSound(@NotNull MASound sound) {
     super();
     this.sound = sound;
+    this.assetKey = "__flixel_sound__/" + ID;
   }
 
   /**
@@ -96,6 +110,57 @@ public class FlixelSound extends FlixelBasic {
    */
   @NotNull
   public MASound getMASound() {
+    return sound;
+  }
+
+  @NotNull
+  @Override
+  public String getAssetKey() {
+    return assetKey;
+  }
+
+  @NotNull
+  @Override
+  public Class<MASound> getType() {
+    return MASound.class;
+  }
+
+  @Override
+  public int getRefCount() {
+    return refCount;
+  }
+
+  @NotNull
+  @Override
+  public FlixelSound retain() {
+    refCount++;
+    return this;
+  }
+
+  @NotNull
+  @Override
+  public FlixelSound release() {
+    refCount--;
+    if (refCount < 0) {
+      refCount = 0;
+    }
+    return this;
+  }
+
+  @Override
+  public void queueLoad() {
+    // Sound is created eagerly in constructors; nothing to queue on the libGDX AssetManager.
+  }
+
+  @NotNull
+  @Override
+  public MASound require() {
+    return sound;
+  }
+
+  @NotNull
+  @Override
+  public MASound loadNow() {
     return sound;
   }
 
@@ -324,12 +389,16 @@ public class FlixelSound extends FlixelBasic {
     this.autoDestroy = autoDestroy;
   }
 
+  @Override
   public boolean isPersist() {
     return persist;
   }
 
-  public void setPersist(boolean persist) {
+  @NotNull
+  @Override
+  public FlixelSound setPersist(boolean persist) {
     this.persist = persist;
+    return this;
   }
 
   @Override

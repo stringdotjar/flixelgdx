@@ -11,22 +11,22 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetDescriptor;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectMap;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import games.rednblack.miniaudio.MASound;
 import games.rednblack.miniaudio.loader.MASoundLoader;
 import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.audio.FlixelSoundSource;
 import me.stringdotjar.flixelgdx.audio.FlixelSoundSourceLoader;
-import me.stringdotjar.flixelgdx.graphics.FlixelGraphic;
 import me.stringdotjar.flixelgdx.graphics.FlixelGraphicSource;
-import me.stringdotjar.flixelgdx.graphics.FlixelGraphicSourceLoader;
+import me.stringdotjar.flixelgdx.graphics.FlixelGraphicWrapperFactory;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -35,10 +35,13 @@ import org.jetbrains.annotations.Nullable;
  * Default concrete asset manager for FlixelGDX.
  *
  * <p>This class centralizes asset loading and lifecycle policy in one place. It wraps a single libGDX
- * {@link AssetManager}, plus pooled wrappers ({@link FlixelGraphic}, {@link FlixelAsset})
+ * {@link AssetManager}, plus pooled wrappers (via {@link FlixelWrapperFactory}) and {@link FlixelTypedAsset}
  * that track {@code persist} and reference counts and can be cleared on state switches.
  *
  * <p><b>Recommended usage:</b> Access this via {@link me.stringdotjar.flixelgdx.Flixel#assets}.
+ *
+ * <p><b>Path loading:</b> {@link #load(String)} infers a {@link FlixelSource} from the file extension using
+ * {@link #registerExtension(String, Function)}. Prefer {@link #load(FlixelSource)} when the asset type must be explicit.
  *
  * <p><b>Experts:</b> {@link #getManager()} exposes the underlying {@link AssetManager} for custom
  * loaders, {@link AssetDescriptor} batches, or APIs not wrapped here.
@@ -49,10 +52,13 @@ public class FlixelDefaultAssetManager implements FlixelAssetManager {
 
   private final ConcurrentHashMap<String, String> audioPathCache = new ConcurrentHashMap<>();
 
-  private final ObjectMap<String, FlixelGraphic> graphicCache = new ObjectMap<>();
-  private int ownedGraphicId;
+  private final ObjectMap<Class<?>, FlixelWrapperFactory<?>> wrapperFactories = new ObjectMap<>();
+  private int syntheticWrapperId;
 
-  private final ObjectMap<AssetId, FlixelAsset<?>> typedAssetCache = new ObjectMap<>();
+  private final ObjectMap<AssetId, FlixelTypedAsset<?>> typedAssetCache = new ObjectMap<>();
+
+  /** Per-instance extension (e.g. {@code .png}) to source factory for {@link #load(String)}. */
+  private final ConcurrentHashMap<String, Function<String, FlixelSource<?>>> extensionRegistry = new ConcurrentHashMap<>();
 
   private record AssetId(@NotNull String key, @NotNull Class<?> type) {
     @Override
@@ -73,8 +79,99 @@ public class FlixelDefaultAssetManager implements FlixelAssetManager {
     manager = new AssetManager();
     ensureMiniAudioLoader();
     manager.setLoader(String.class, new FlixelStringAssetLoader(manager.getFileHandleResolver()));
-    manager.setLoader(FlixelGraphicSource.class, new FlixelGraphicSourceLoader(manager.getFileHandleResolver()));
     manager.setLoader(FlixelSoundSource.class, new FlixelSoundSourceLoader(manager.getFileHandleResolver()));
+    registerDefaultExtensionMappings();
+    registerWrapperFactory(new FlixelGraphicWrapperFactory());
+  }
+
+  private void registerDefaultExtensionMappings() {
+    Function<String, FlixelSource<?>> graphic = FlixelGraphicSource::new;
+    registerExtension(".png", graphic);
+    registerExtension(".jpg", graphic);
+    registerExtension(".jpeg", graphic);
+    registerExtension(".webp", graphic);
+
+    Function<String, FlixelSource<?>> sound = FlixelSoundSource::new;
+    registerExtension(".mp3", sound);
+    registerExtension(".ogg", sound);
+    registerExtension(".wav", sound);
+    registerExtension(".flac", sound);
+
+    Function<String, FlixelSource<?>> text = FlixelStringAssetSource::new;
+    registerExtension(".txt", text);
+    registerExtension(".xml", text);
+    registerExtension(".json", text);
+  }
+
+  @NotNull
+  private static String normalizeExtension(@NotNull String extension) {
+    String e = extension.trim().toLowerCase(Locale.ROOT);
+    if (e.isEmpty()) {
+      throw new IllegalArgumentException("extension cannot be empty.");
+    }
+    if (!e.startsWith(".")) {
+      e = "." + e;
+    }
+    return e;
+  }
+
+  /**
+   * Returns the last path segment's extension including the dot (e.g. {@code .png}), or empty if none.
+   */
+  @NotNull
+  private static String fileExtensionFromPath(@NotNull String path) {
+    int lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+    String name = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+    int dot = name.lastIndexOf('.');
+    if (dot < 0 || dot == name.length() - 1) {
+      return "";
+    }
+    return name.substring(dot).toLowerCase(Locale.ROOT);
+  }
+
+  @Override
+  public void load(@NotNull String path) {
+    if (path == null || path.isEmpty()) {
+      throw new IllegalArgumentException("path cannot be null/empty.");
+    }
+    String ext = fileExtensionFromPath(path);
+    if (ext.isEmpty()) {
+      throw new IllegalArgumentException(
+        "Cannot infer asset type from path (no extension): \"" + path + "\". "
+          + "Use load(FlixelSource) or registerExtension(...) for extensionless paths."
+      );
+    }
+    Function<String, FlixelSource<?>> factory = extensionRegistry.get(ext);
+    if (factory == null) {
+      throw new IllegalArgumentException(
+        "No source factory registered for extension \"" + ext + "\" (path: \"" + path + "\"). "
+          + "Call registerExtension(\"" + ext + "\", factory) or use load(FlixelSource) explicitly."
+      );
+    }
+    FlixelSource<?> source = factory.apply(path);
+    if (source == null) {
+      throw new IllegalStateException("Extension factory for \"" + ext + "\" returned null for path \"" + path + "\".");
+    }
+    load(source);
+  }
+
+  @Override
+  public void registerExtension(@NotNull String extension, @NotNull Function<String, FlixelSource<?>> factory) {
+    if (extension == null) {
+      throw new IllegalArgumentException("extension cannot be null.");
+    }
+    if (factory == null) {
+      throw new IllegalArgumentException("factory cannot be null.");
+    }
+    extensionRegistry.put(normalizeExtension(extension), factory);
+  }
+
+  @Override
+  public void unregisterExtension(@NotNull String extension) {
+    if (extension == null) {
+      throw new IllegalArgumentException("extension cannot be null.");
+    }
+    extensionRegistry.remove(normalizeExtension(extension));
   }
 
   /**
@@ -173,28 +270,6 @@ public class FlixelDefaultAssetManager implements FlixelAssetManager {
 
   @NotNull
   @Override
-  public Texture requireTexture(@NotNull String assetKey) {
-    if (!manager.isLoaded(assetKey, Texture.class)) {
-      throw new IllegalStateException(
-        "Texture not loaded: \"" + assetKey + "\". Preload it in a loading state (Flixel.assets.load + Flixel.assets.update()), "
-          + "or call loadGraphicSourceNow(String) explicitly."
-      );
-    }
-    return manager.get(assetKey, Texture.class);
-  }
-
-  @NotNull
-  @Override
-  public Texture loadGraphicSourceNow(@NotNull String assetKey) {
-    if (!manager.isLoaded(assetKey, FlixelGraphicSource.class)) {
-      manager.load(assetKey, FlixelGraphicSource.class);
-      manager.finishLoadingAsset(assetKey);
-    }
-    return requireTexture(assetKey);
-  }
-
-  @NotNull
-  @Override
   public String resolveAudioPath(@NotNull String path) {
     return audioPathCache.computeIfAbsent(path, this::extractAssetPath);
   }
@@ -248,7 +323,7 @@ public class FlixelDefaultAssetManager implements FlixelAssetManager {
 
   @Override
   public void clearNonPersist() {
-    clearNonPersistGraphics();
+    clearNonPersistWrappers();
     clearNonPersistTypedAssets();
   }
 
@@ -258,10 +333,14 @@ public class FlixelDefaultAssetManager implements FlixelAssetManager {
       manager.dispose();
       manager = null;
     }
-    ownedGraphicId = 0;
-    graphicCache.clear();
+    syntheticWrapperId = 0;
+    for (FlixelWrapperFactory<?> f : wrapperFactories.values()) {
+      f.clearAll();
+    }
+    wrapperFactories.clear();
     typedAssetCache.clear();
     audioPathCache.clear();
+    extensionRegistry.clear();
   }
 
   @Override
@@ -271,63 +350,59 @@ public class FlixelDefaultAssetManager implements FlixelAssetManager {
 
   @NotNull
   @Override
-  public FlixelGraphic obtainGraphic(@NotNull String assetKey) {
-    FlixelGraphic g = graphicCache.get(assetKey);
-    if (g == null) {
-      g = new FlixelGraphic(this, assetKey);
-      graphicCache.put(assetKey, g);
+  public String allocateSyntheticWrapperKey() {
+    return "__flixel_syn_wrapper__/" + (syntheticWrapperId++);
+  }
+
+  @Override
+  public void registerWrapper(@NotNull FlixelPooledWrapper wrapper) {
+    FlixelWrapperFactory<?> factory = wrapperFactories.get(wrapper.wrapperRegistrationClass());
+    if (factory == null) {
+      throw new IllegalArgumentException(
+        "No wrapper factory registered for: " + wrapper.wrapperRegistrationClass().getName()
+          + ". Call registerWrapperFactory(...) first."
+      );
     }
-    return g;
+    registerWrapperUnchecked(factory, wrapper);
+  }
+
+  @Override
+  public void registerWrapperFactory(@NotNull FlixelWrapperFactory<?> factory) {
+    Class<?> type = factory.wrapperType();
+    if (wrapperFactories.containsKey(type)) {
+      throw new IllegalStateException("Wrapper factory already registered for: " + type.getName());
+    }
+    wrapperFactories.put(type, factory);
+  }
+
+  @SuppressWarnings("unchecked")
+  private <W> void registerWrapperUnchecked(
+    @NotNull FlixelWrapperFactory<W> factory,
+    @NotNull FlixelPooledWrapper wrapper
+  ) {
+    factory.registerInstance(this, (W) wrapper);
   }
 
   @NotNull
   @Override
-  public FlixelGraphic obtainOwnedGraphic(@NotNull Texture texture) {
-    String key = "__owned_texture__/" + (ownedGraphicId++);
-    FlixelGraphic g = new FlixelGraphic(this, key, texture);
-    graphicCache.put(key, g);
-    return g;
+  @SuppressWarnings("unchecked")
+  public <W> W obtainWrapper(@NotNull String key, @NotNull Class<W> wrapperType) {
+    FlixelWrapperFactory<?> f = wrapperFactories.get(wrapperType);
+    if (f == null) {
+      throw new IllegalArgumentException("No wrapper factory registered for: " + wrapperType.getName());
+    }
+    return ((FlixelWrapperFactory<W>) f).obtainKeyed(this, key);
   }
 
   @Nullable
   @Override
-  public FlixelGraphic peekGraphic(@NotNull String assetKey) {
-    return graphicCache.get(assetKey);
-  }
-
-  @Override
-  public void clearNonPersistGraphics() {
-    AssetManager assets = manager;
-
-    Array<String> toRemove = null;
-    for (ObjectMap.Entry<String, FlixelGraphic> e : graphicCache) {
-      FlixelGraphic g = e.value;
-      if (g == null) continue;
-      if (g.persist) continue;
-      if (g.getRefCount() > 0) continue;
-
-      if (g.isOwned()) {
-        Texture t = g.getOwnedTexture();
-        if (t != null) {
-          t.dispose();
-        }
-      } else if (assets != null) {
-        if (assets.isLoaded(g.getAssetKey())) {
-          assets.unload(g.getAssetKey());
-        }
-      }
-
-      if (toRemove == null) {
-        toRemove = new Array<>();
-      }
-      toRemove.add(g.getAssetKey());
+  @SuppressWarnings("unchecked")
+  public <W> W peekWrapper(@NotNull String key, @NotNull Class<W> wrapperType) {
+    FlixelWrapperFactory<?> f = wrapperFactories.get(wrapperType);
+    if (f == null) {
+      throw new IllegalArgumentException("No wrapper factory registered for: " + wrapperType.getName());
     }
-
-    if (toRemove != null) {
-      for (int i = 0; i < toRemove.size; i++) {
-        graphicCache.remove(toRemove.get(i));
-      }
-    }
+    return ((FlixelWrapperFactory<W>) f).peek(this, key);
   }
 
   @NotNull
@@ -335,11 +410,11 @@ public class FlixelDefaultAssetManager implements FlixelAssetManager {
   @SuppressWarnings("unchecked")
   public <T> FlixelAsset<T> obtainTypedAsset(@NotNull String assetKey, @NotNull Class<T> type) {
     AssetId id = new AssetId(assetKey, type);
-    FlixelAsset<?> existing = typedAssetCache.get(id);
+    FlixelTypedAsset<?> existing = typedAssetCache.get(id);
     if (existing != null) {
       return (FlixelAsset<T>) existing;
     }
-    FlixelAsset<T> created = new FlixelAsset<>(this, assetKey, type);
+    FlixelTypedAsset<T> created = new FlixelTypedAsset<>(this, assetKey, type);
     typedAssetCache.put(id, created);
     return created;
   }
@@ -350,11 +425,17 @@ public class FlixelDefaultAssetManager implements FlixelAssetManager {
     return typedAssetCache.get(new AssetId(assetKey, type));
   }
 
+  private void clearNonPersistWrappers() {
+    for (FlixelWrapperFactory<?> f : wrapperFactories.values()) {
+      f.clearNonPersist(this);
+    }
+  }
+
   @Override
   public void clearNonPersistTypedAssets() {
 
     Array<AssetId> toRemove = null;
-    for (ObjectMap.Entry<AssetId, FlixelAsset<?>> e : typedAssetCache) {
+    for (ObjectMap.Entry<AssetId, FlixelTypedAsset<?>> e : typedAssetCache) {
       FlixelAsset<?> a = e.value;
       if (a == null) continue;
       if (a.isPersist()) continue;

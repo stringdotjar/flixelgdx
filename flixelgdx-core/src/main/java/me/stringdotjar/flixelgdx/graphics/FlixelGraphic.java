@@ -10,6 +10,9 @@ package me.stringdotjar.flixelgdx.graphics;
 import com.badlogic.gdx.graphics.Texture;
 
 import me.stringdotjar.flixelgdx.asset.FlixelAssetManager;
+import me.stringdotjar.flixelgdx.asset.FlixelSource;
+import me.stringdotjar.flixelgdx.asset.FlixelTypedAsset;
+import me.stringdotjar.flixelgdx.asset.FlixelPooledWrapper;
 
 import java.util.Objects;
 
@@ -17,7 +20,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Graphic container and wrapper around a libGDX {@link Texture}.
+ * Graphic container and wrapper around a libGDX {@link Texture}, implementing {@link me.stringdotjar.flixelgdx.asset.FlixelAsset}{@code <Texture>}
+ * via {@link me.stringdotjar.flixelgdx.asset.FlixelTypedAsset}.
  *
  * <p>Graphics are identified by an {@code assetKey} (usually an internal asset path).
  * Wrapper instances are pooled in {@link me.stringdotjar.flixelgdx.asset.FlixelAssetManager} so
@@ -25,18 +29,14 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>Lifecycle ({@code persist}, refcount) is tracked here; keyed texture loading is implemented in
  * {@link me.stringdotjar.flixelgdx.asset.FlixelAssetManager} ({@link me.stringdotjar.flixelgdx.Flixel#assets}).
+ *
+ * <p>Enqueue loads with {@link #queueLoad()} (or {@link me.stringdotjar.flixelgdx.asset.FlixelAssetManager#load(FlixelSource)} /
+ * {@link me.stringdotjar.flixelgdx.asset.FlixelAssetManager#load(String)} on {@code Flixel.assets}); prefer
+ * {@link me.stringdotjar.flixelgdx.asset.FlixelAssetManager#load(FlixelSource)} over {@code load(String)} when the type must be explicit.
+ *
+ * @see me.stringdotjar.flixelgdx.asset.FlixelAssetManager
  */
-public final class FlixelGraphic {
-
-  @NotNull
-  private final String assetKey;
-
-  /** If true, this graphic will not be auto-unloaded on state switches. */
-  public boolean persist;
-  private int refCount;
-
-  @NotNull
-  private final FlixelAssetManager assetManager;
+public final class FlixelGraphic extends FlixelTypedAsset<Texture> implements FlixelPooledWrapper {
 
   @Nullable
   private final Texture ownedTexture;
@@ -48,48 +48,34 @@ public final class FlixelGraphic {
   }
 
   public FlixelGraphic(@NotNull FlixelAssetManager assetManager, @NotNull String key, @Nullable Texture ownedTexture) {
-    if (key == null || key.isEmpty()) {
-      throw new IllegalArgumentException("Asset key cannot be null/empty.");
-    }
-    this.assetKey = key;
-    this.persist = false;
-    this.refCount = 0;
-    this.assetManager = assetManager;
+    super(assetManager, key, Texture.class);
     this.owned = (ownedTexture != null);
     this.ownedTexture = ownedTexture;
   }
 
-  /** Returns the cache key (typically an internal path like {@code "images/player.png"}). */
   @NotNull
-  public String getAssetKey() {
-    return assetKey;
-  }
-
+  @Override
   public FlixelGraphic setPersist(boolean persist) {
-    this.persist = persist;
+    super.setPersist(persist);
     return this;
   }
 
-  public int getRefCount() {
-    return refCount;
-  }
-
-  /** Increases the external reference count for this graphic. */
+  @NotNull
+  @Override
   public FlixelGraphic retain() {
-    refCount++;
+    super.retain();
     return this;
   }
 
-  /** Decreases the external reference count for this graphic (never below 0). */
+  @NotNull
+  @Override
   public FlixelGraphic release() {
-    refCount--;
-    if (refCount < 0) {
-      refCount = 0;
-    }
+    super.release();
     return this;
   }
 
-  /** Whether this graphic wraps a pixmap-generated texture (unloaded via {@link FlixelAssets}). */
+  /** Whether this graphic wraps a pixmap-generated texture (disposed on clear, not unloaded by key). */
+  @Override
   public boolean isOwned() {
     return owned;
   }
@@ -100,27 +86,31 @@ public final class FlixelGraphic {
     return ownedTexture;
   }
 
-  /**
-   * Enqueues this texture into {@link FlixelAssets}. Call from a loading state.
-   * Safe to call multiple times.
-   */
+  @Override
   public void queueLoad() {
     if (owned) {
       return;
     }
-    assetManager.load(new FlixelGraphicSource(assetKey));
+    super.queueLoad();
   }
 
   /**
    * Returns the loaded texture. Strict: the texture must already be loaded
-   * (typically via {@link #queueLoad()} + {@link FlixelAssetManager#update()} / {@link Flixel.assets#update()} in a loading state).
+   * (typically via {@link #queueLoad()} plus {@link FlixelAssetManager#update()} in a loading state).
    */
   @NotNull
-  public Texture requireTexture() {
+  @Override
+  public Texture require() {
     if (owned) {
       return Objects.requireNonNull(ownedTexture);
     }
-    return assetManager.requireTexture(assetKey);
+    return super.require();
+  }
+
+  /** Same as {@link #require()}; kept for call sites that name the texture explicitly. */
+  @NotNull
+  public Texture requireTexture() {
+    return require();
   }
 
   /**
@@ -129,10 +119,11 @@ public final class FlixelGraphic {
    * <p>Prefer {@link #queueLoad()} in a loading state to avoid blocking the main thread.
    */
   @NotNull
+  @Override
   public Texture loadNow() {
     if (owned) {
       return Objects.requireNonNull(ownedTexture);
     }
-    return assetManager.loadGraphicSourceNow(assetKey);
+    return super.loadNow();
   }
 }

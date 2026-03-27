@@ -56,12 +56,12 @@ import java.util.function.Supplier;
  *
  * <p>Use this for switching screens, and use {@link #sound} for playing sounds and music
  * ({@code Flixel.sound.playSound()}, {@code Flixel.sound.playMusic()}, etc.).
- * Preload assets with {@link me.stringdotjar.flixelgdx.asset.FlixelAssets} and {@link me.stringdotjar.flixelgdx.asset.FlixelAsset}.
+ * Preload assets with {@link me.stringdotjar.flixelgdx.asset.FlixelAssetManager} and
+ * {@link me.stringdotjar.flixelgdx.asset.FlixelAsset}.
  */
 public final class Flixel {
 
   /** The current {@code FlixelState} being displayed. */
-  @Nullable
   private static FlixelState state;
 
   /** Keyboard input manager. Use {@code Flixel.keys.pressed(key)}, {@code Flixel.keys.justPressed(key)}, etc. */
@@ -73,7 +73,7 @@ public final class Flixel {
   public static FlixelAudioManager sound;
 
   /** Central asset manager. Use this for loading, caching and managing assets. */
-  @Nullable
+  @NotNull
   public static FlixelAssetManager assets;
 
   /** The debug watch manager. Access via {@code Flixel.watch.add(...)}, {@code Flixel.watch.remove(...)}, etc. */

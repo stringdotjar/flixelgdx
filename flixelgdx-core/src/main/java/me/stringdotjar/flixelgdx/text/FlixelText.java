@@ -112,6 +112,16 @@ public class FlixelText extends FlixelSprite {
   /** The font used for text rendering. */
   private BitmapFont bitmapFont;
 
+  /**
+   * {@code true} if {@link #bitmapFont} was produced by FreeType for a direct
+   * {@link #fontFile} (not registry-cached); such fonts are disposed when replaced or on
+   * {@link #destroy()}.
+   */
+  private boolean privateBitmapFontOwned;
+
+  /** Reused when generating FreeType fonts from a private {@link #fontFile}. */
+  private final FreeTypeFontParameter freeTypeParams = new FreeTypeFontParameter();
+
   /** Cached text layout used for measurement and drawing. */
   private final GlyphLayout glyphLayout = new GlyphLayout();
 
@@ -518,6 +528,7 @@ public class FlixelText extends FlixelSprite {
     this.bitmapFont = font;
     this.fontFile = null;
     this.fontRegistryId = null;
+    privateBitmapFontOwned = false;
     fontDirty = false;
     layoutDirty = true;
     return this;
@@ -857,6 +868,7 @@ public class FlixelText extends FlixelSprite {
 
   @Override
   public void destroy() {
+    super.destroy();
     disposeFont();
     text = "";
     size = 8;
@@ -875,6 +887,7 @@ public class FlixelText extends FlixelSprite {
     borderQuality = 1;
     fontFile = null;
     fontRegistryId = null;
+    privateBitmapFontOwned = false;
     currentGeneratorPath = null;
     ownsGenerator = false;
     fontDirty = true;
@@ -923,29 +936,35 @@ public class FlixelText extends FlixelSprite {
    */
   private void rebuildFont() {
     BitmapFont oldFont = bitmapFont;
+    boolean oldPrivate = privateBitmapFontOwned;
 
     FreeTypeFontGenerator gen = resolveGenerator();
     if (gen != null) {
-      FreeTypeFontParameter param = new FreeTypeFontParameter();
-      param.size = size;
-      param.spaceX = (int) letterSpacing;
-      param.genMipMaps = true;
-      param.minFilter = Texture.TextureFilter.Linear;
-      param.magFilter = Texture.TextureFilter.Linear;
-
-      bitmapFont = gen.generateFont(param);
-    } else {
-      bitmapFont = new BitmapFont();
-      float defaultHeight = bitmapFont.getLineHeight();
-      if (defaultHeight > 0) {
-        bitmapFont.getData().setScale(size / defaultHeight);
+      int space = (int) letterSpacing;
+      if (fontRegistryId != null) {
+        bitmapFont = FlixelFontRegistry.obtainBitmapFontFromFreeType(
+            "reg:" + fontRegistryId, gen, size, space);
+        privateBitmapFontOwned = false;
+      } else if (fontFile != null) {
+        freeTypeParams.size = size;
+        freeTypeParams.spaceX = space;
+        freeTypeParams.genMipMaps = true;
+        freeTypeParams.minFilter = Texture.TextureFilter.Linear;
+        freeTypeParams.magFilter = Texture.TextureFilter.Linear;
+        bitmapFont = gen.generateFont(freeTypeParams);
+        privateBitmapFontOwned = true;
+      } else {
+        String defId = FlixelFontRegistry.getDefault();
+        bitmapFont = FlixelFontRegistry.obtainBitmapFontFromFreeType(
+            "def:" + defId, gen, size, space);
+        privateBitmapFontOwned = false;
       }
-      bitmapFont.getRegion()
-        .getTexture()
-        .setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+    } else {
+      bitmapFont = FlixelFontRegistry.obtainDefaultBitmapFont(size);
+      privateBitmapFontOwned = false;
     }
 
-    if (oldFont != null) {
+    if (oldFont != null && oldFont != bitmapFont && oldPrivate) {
       oldFont.dispose();
     }
   }
@@ -1076,12 +1095,13 @@ public class FlixelText extends FlixelSprite {
     }
   }
 
-  /** Disposes the BitmapFont and any privately-owned generator. */
+  /** Releases font references; disposes only instance-owned FreeType bitmap fonts. */
   private void disposeFont() {
-    if (bitmapFont != null) {
+    if (bitmapFont != null && privateBitmapFontOwned) {
       bitmapFont.dispose();
-      bitmapFont = null;
     }
+    bitmapFont = null;
+    privateBitmapFontOwned = false;
     disposeOwnedGenerator();
   }
 
