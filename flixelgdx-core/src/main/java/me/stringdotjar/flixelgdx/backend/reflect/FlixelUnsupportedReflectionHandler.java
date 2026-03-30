@@ -1,3 +1,10 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx.backend.reflect;
 
 import java.lang.reflect.Field;
@@ -10,7 +17,8 @@ public final class FlixelUnsupportedReflectionHandler implements FlixelReflectio
 
   private static UnsupportedOperationException unsupported(String operation) {
     return new UnsupportedOperationException(
-      "Flixel.reflect is not configured yet. Unsupported operation: " + operation);
+      "Flixel.reflect is not configured yet. Call Flixel.setReflection(...) with a "
+          + "FlixelReflection implementation. Unsupported operation: " + operation);
   }
 
   @Override
@@ -29,7 +37,7 @@ public final class FlixelUnsupportedReflectionHandler implements FlixelReflectio
   }
 
   @Override
-  public Object getProperty(Object target, String propertyName) {
+  public Object property(Object target, String propertyName) {
     throw unsupported("getProperty");
   }
 
@@ -64,17 +72,22 @@ public final class FlixelUnsupportedReflectionHandler implements FlixelReflectio
   }
 
   @Override
-  public List<Field> getAllFields(Class<?> type) {
+  public List<Field> objectFields(Class<?> type) {
     throw unsupported("getAllFields");
   }
 
   @Override
-  public Field[] getAllFieldsAsArray(Class<?> type) {
+  public Field[] objectFieldsArray(Class<?> type) {
     throw unsupported("getAllFieldsAsArray");
   }
 
   @Override
   public boolean isClassFinal(String classPath) {
     throw unsupported("isClassFinal");
+  }
+
+  @Override
+  public FlixelPropertyPath resolvePropertyPath(Object root, String dottedPath) {
+    throw unsupported("resolvePropertyPath");
   }
 }

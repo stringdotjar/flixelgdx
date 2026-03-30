@@ -1,3 +1,10 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx.box2d;
 
 import com.badlogic.gdx.math.Vector2;
@@ -16,7 +23,7 @@ import me.stringdotjar.flixelgdx.util.FlixelConstants;
  * automatically synced back to the object's {@code x}, {@code y}, and {@code angle}
  * each frame (via {@link #syncFromBody()}).
  *
- * <h3>Usage</h3>
+ * <h2>Usage</h2>
  * <pre>{@code
  * public class Crate extends FlixelSprite implements FlixelBox2DObject {
  *   private Body body;
@@ -31,11 +38,11 @@ import me.stringdotjar.flixelgdx.util.FlixelConstants;
  * }
  * }</pre>
  *
- * <h3>Pixel-to-Meter Scale</h3>
+ * <h2>Pixel-to-Meter Scale</h2>
  * All default helpers use {@link FlixelConstants.Physics#PIXELS_PER_METER}
  * (100 px = 1 m). Override individual methods if your game uses a different scale.
  *
- * <h3>Motion</h3>
+ * <h2>Motion</h2>
  * When a Box2D body is present, the implementor should <em>not</em> rely on
  * {@link FlixelObject#updateMotion(float)} for movement; instead the
  * {@link World} step drives the body and {@link #syncFromBody()} copies the result

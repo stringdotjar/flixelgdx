@@ -1,3 +1,10 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx.tween.builders;
 
 import me.stringdotjar.flixelgdx.tween.FlixelTween;
@@ -52,6 +59,6 @@ public final class FlixelNumTweenBuilder extends FlixelAbstractTweenBuilder<Flix
     FlixelTweenSettings settings = new FlixelTweenSettings(type, ease);
     applyTo(settings);
     FlixelNumTween tween = new FlixelNumTween(from, to, settings, callback);
-    return (FlixelNumTween) FlixelTween.getGlobalManager().addTween(tween);
+    return (FlixelNumTween) manager.addTween(tween);
   }
 }

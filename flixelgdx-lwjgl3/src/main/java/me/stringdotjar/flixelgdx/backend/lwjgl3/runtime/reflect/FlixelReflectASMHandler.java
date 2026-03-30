@@ -1,3 +1,10 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx.backend.lwjgl3.runtime.reflect;
 
 import com.esotericsoftware.reflectasm.FieldAccess;
@@ -75,8 +82,8 @@ public final class FlixelReflectASMHandler implements FlixelReflection {
   }
 
   @Override
-  public Object getProperty(Object target, String propertyName) {
-    return fallback.getProperty(target, propertyName);
+  public Object property(Object target, String propertyName) {
+    return fallback.property(target, propertyName);
   }
 
   @Override
@@ -122,13 +129,13 @@ public final class FlixelReflectASMHandler implements FlixelReflection {
   }
 
   @Override
-  public List<Field> getAllFields(Class<?> type) {
-    return fallback.getAllFields(type);
+  public List<Field> objectFields(Class<?> type) {
+    return fallback.objectFields(type);
   }
 
   @Override
-  public Field[] getAllFieldsAsArray(Class<?> type) {
-    return fallback.getAllFieldsAsArray(type);
+  public Field[] objectFieldsArray(Class<?> type) {
+    return fallback.objectFieldsArray(type);
   }
 
   @Override

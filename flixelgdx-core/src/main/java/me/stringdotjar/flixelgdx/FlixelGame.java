@@ -1,3 +1,10 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx;
 
 import com.badlogic.gdx.Application;
@@ -17,8 +24,6 @@ import com.badlogic.gdx.utils.ScreenUtils;
 
 import me.stringdotjar.flixelgdx.box2d.FlixelBox2DObject;
 import me.stringdotjar.flixelgdx.debug.FlixelDebugOverlay;
-import me.stringdotjar.flixelgdx.display.FlixelCamera;
-import me.stringdotjar.flixelgdx.display.FlixelState;
 import me.stringdotjar.flixelgdx.signal.FlixelSignalData.UpdateSignalData;
 import me.stringdotjar.flixelgdx.text.FlixelFontRegistry;
 import me.stringdotjar.flixelgdx.tween.FlixelTween;
@@ -72,7 +77,7 @@ import org.jetbrains.annotations.NotNull;
  *     FlixelLwjgl3Launcher.launch(game);
  *   }
  * }
- * }
+ * }</pre>
  */
 public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable {
 
@@ -306,7 +311,7 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
     }
 
     stage.act(elapsed);
-    FlixelTween.getGlobalManager().update(elapsed);
+    FlixelTween.updateTweens(elapsed);
 
     // Walk the state/substate chain. Each state in the chain is updated only
     // if it is the active (innermost) state or if its persistentUpdate flag is true.
@@ -540,16 +545,27 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
       Flixel.clearDebugOverlay();
     }
 
-    Flixel.getState().hide();
-    Flixel.getState().dispose();
-    stage.dispose();
-    batch.dispose();
-    bgTexture.dispose();
+    if (Flixel.getState() != null) {
+      Flixel.getState().destroy();
+    }
+    if (stage != null) {
+      stage.dispose();
+    }
+    if (batch != null) {
+      batch.dispose();
+    }
+    if (bgTexture != null) {
+      bgTexture.dispose();
+    }
 
-    Flixel.sound.dispose();
+    if (Flixel.assets != null) {
+      Flixel.assets.dispose();
+    }
+    if (Flixel.sound != null) {
+      Flixel.sound.destroy();
+    }
     if (world != null) {
       world.dispose();
-      world = null;
     }
 
     FlixelFontRegistry.dispose();

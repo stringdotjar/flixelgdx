@@ -1,21 +1,43 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx.tween.type;
+
+import java.util.Objects;
 
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
 
+import me.stringdotjar.flixelgdx.Flixel;
+import me.stringdotjar.flixelgdx.backend.reflect.FlixelPropertyPath;
 import me.stringdotjar.flixelgdx.tween.FlixelTween;
 import me.stringdotjar.flixelgdx.tween.settings.FlixelTweenSettings;
+
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Tween type for animating values via getter/setter pairs (property goals) rather than
  * reflection. Use this when you need setter side effects (e.g. bounds updates, listeners) to
  * run on every interpolated step. Configure with {@link FlixelTweenSettings#addGoal}.
  *
- * <p>Note that this is faster than {@link FlixelVarTween} since it does not use reflection to access the fields.
- * It is recommended to use this when you need setter side effects (e.g. bounds updates, listeners) to
- * run on every interpolated step, the {@code FlixelVarTween} type is there for convenience.
+ * <p>This is faster than {@link FlixelVarTween}, which resolves names through {@link me.stringdotjar.flixelgdx.Flixel#reflect}
+ * each frame. Both can invoke JavaBean setters on every step when configured that way; prefer this type when you can
+ * close over getter/setter references and avoid reflection.
  */
 public class FlixelPropertyTween extends FlixelTween {
+
+  /**
+   * Logical subject for {@link #isTweenOf(Object, String)}; must be set before {@link #start()} /
+   * {@link me.stringdotjar.flixelgdx.tween.FlixelTweenManager#addTween(FlixelTween)}.
+   */
+  protected @Nullable Object tweenObject;
+
+  /** Optional label for {@link #isTweenOf(Object, String)} when no intrinsic property name exists. */
+  protected @Nullable String fieldLabel;
 
   /**
    * Cached property goals captured at {@link #start()} to avoid re-allocating the list every
@@ -39,8 +61,43 @@ public class FlixelPropertyTween extends FlixelTween {
     super(settings);
   }
 
+  /**
+   * Sets the object {@code this} tween logically animates (required before {@link #start()}).
+   *
+   * <p>This has to be set because {@link #isTweenOf(Object, String)} needs to know the object to tween.
+   * This method is purely for logic purposes used by {@link me.stringdotjar.flixelgdx.tween.FlixelTweenManager}, not for tweening purposes.
+   *
+   * @param tweenObject The object to tween.
+   * @return {@code this} for chaining.
+   */
+  public FlixelPropertyTween setObject(@Nullable Object tweenObject) {
+    this.tweenObject = tweenObject;
+    return this;
+  }
+
+  /**
+   * Optional logical field name for {@link #isTweenOf(Object, String)} matching.
+   */
+  public FlixelPropertyTween setFieldLabel(@Nullable String fieldLabel) {
+    this.fieldLabel = fieldLabel;
+    return this;
+  }
+
+  public @Nullable Object getTweenObject() {
+    return tweenObject;
+  }
+
+  public @Nullable String getFieldLabel() {
+    return fieldLabel;
+  }
+
   @Override
   public FlixelTween start() {
+    if (tweenObject == null) {
+      throw new IllegalStateException(
+          "FlixelPropertyTween requires setObject(Object) before start(). "
+              + "Use FlixelTween.tween(FlixelPropertyTween.class, FlixelPropertyTweenBuilder.class) and call setObject on the builder.");
+    }
     super.start();
 
     if (tweenSettings == null) {
@@ -108,5 +165,23 @@ public class FlixelPropertyTween extends FlixelTween {
     super.reset();
     cachedPropertyGoals.clear();
     propertyGoalStartValues.clear();
+    tweenObject = null;
+    fieldLabel = null;
+  }
+
+  @Override
+  public boolean isTweenOf(Object o, String field) {
+    if (tweenObject == null) {
+      return false;
+    }
+    if (field == null || field.isEmpty()) {
+      return Objects.equals(o, tweenObject);
+    }
+    if (field.indexOf('.') < 0) {
+      return Objects.equals(o, tweenObject) && (fieldLabel == null || fieldLabel.equals(field));
+    }
+    FlixelPropertyPath path = Flixel.reflect.resolvePropertyPath(o, field);
+    return Objects.equals(path.leafObject(), tweenObject)
+        && (fieldLabel == null || fieldLabel.equals(path.leafName()));
   }
 }

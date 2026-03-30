@@ -1,3 +1,10 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx.backend.reflect;
 
 import java.lang.reflect.Constructor;
@@ -57,7 +64,7 @@ public class FlixelDefaultReflectionHandler implements FlixelReflection {
   }
 
   @Override
-  public Object getProperty(Object target, String propertyName) {
+  public Object property(Object target, String propertyName) {
     CachedClassMetadata meta = getMetadata(requireTarget(target));
     Method getter = meta.gettersByProperty.get(propertyName);
     if (getter != null) {
@@ -153,12 +160,12 @@ public class FlixelDefaultReflectionHandler implements FlixelReflection {
   }
 
   @Override
-  public List<Field> getAllFields(Class<?> type) {
+  public List<Field> objectFields(Class<?> type) {
     return new ArrayList<>(getMetadata(type).allFields);
   }
 
   @Override
-  public Field[] getAllFieldsAsArray(Class<?> type) {
+  public Field[] objectFieldsArray(Class<?> type) {
     List<Field> all = getMetadata(type).allFields;
     return all.toArray(new Field[0]);
   }

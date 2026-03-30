@@ -1,3 +1,10 @@
+/**********************************************************************************
+ * Copyright (c) 2025-2026 stringdotjar
+ *
+ * This file is part of the FlixelGDX framework, licensed under the MIT License.
+ * See the LICENSE file in the repository root for full license information.
+ **********************************************************************************/
+
 package me.stringdotjar.flixelgdx.tween.builders;
 
 import com.badlogic.gdx.utils.Array;
@@ -10,14 +17,17 @@ import me.stringdotjar.flixelgdx.tween.settings.FlixelTweenSettings.FlixelTweenP
 import me.stringdotjar.flixelgdx.tween.type.FlixelPropertyTween;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Fluent builder for {@link FlixelPropertyTween}. Use getter/setter goals via {@link #addGoal}.
- * Chain ends with {@link #start()}.
+ * {@link #setObject(Object)} is required before {@link #start()}. Chain ends with {@link #start()}.
  */
 public final class FlixelPropertyTweenBuilder extends FlixelAbstractTweenBuilder<FlixelPropertyTween, FlixelPropertyTweenBuilder> {
 
   private final Array<FlixelTweenSettings.FlixelTweenPropertyGoal> propertyGoals = new Array<>();
+  private Object tweenObject;
+  private @Nullable String fieldLabel;
 
   /** Creates a new property tween builder. Use {@link FlixelTween#tween(Class, Class) FlixelTween.tween(FlixelPropertyTween.class, FlixelPropertyTweenBuilder.class)}. */
   public FlixelPropertyTweenBuilder() {}
@@ -40,18 +50,39 @@ public final class FlixelPropertyTweenBuilder extends FlixelAbstractTweenBuilder
     return this;
   }
 
+  /**
+   * Required: the logical object this tween animates (for {@link FlixelPropertyTween#isTweenOf(Object, String)}).
+   */
+  public FlixelPropertyTweenBuilder setObject(@NotNull Object tweenObject) {
+    this.tweenObject = tweenObject;
+    return this;
+  }
+
+  /**
+   * Optional label for {@link FlixelPropertyTween#isTweenOf(Object, String)} when matching field paths.
+   */
+  public FlixelPropertyTweenBuilder setFieldLabel(@Nullable String fieldLabel) {
+    this.fieldLabel = fieldLabel;
+    return this;
+  }
+
   @Override
   public FlixelPropertyTween start() {
+    if (tweenObject == null) {
+      throw new IllegalStateException("FlixelPropertyTween requires setObject(Object) before start()");
+    }
     FlixelTweenSettings settings = new FlixelTweenSettings(type, ease);
     applyTo(settings);
     for (int i = 0; i < propertyGoals.size; i++) {
       var goal = propertyGoals.get(i);
       settings.addGoal(goal.getter(), goal.toValue(), goal.setter());
     }
-    FlixelPropertyTween tween = (FlixelPropertyTween) FlixelTween.getGlobalManager()
-      .obtainTween(FlixelPropertyTween.class, () -> new FlixelPropertyTween(settings))
-      .setTweenSettings(settings);
+    FlixelPropertyTween tween =
+        manager.obtainTween(FlixelPropertyTween.class, () -> new FlixelPropertyTween(settings));
+    tween.setTweenSettings(settings);
+    tween.setObject(tweenObject);
+    tween.setFieldLabel(fieldLabel);
 
-    return (FlixelPropertyTween) FlixelTween.getGlobalManager().addTween(tween);
+    return (FlixelPropertyTween) manager.addTween(tween);
   }
 }
