@@ -43,6 +43,10 @@ The goal of FlixelGDX is to provide the familiar Flixel-like structure that deve
 
 FlixelGDX supports the following platforms through its modular backend system:
 
+> [!IMPORTANT]
+> FlixelGDX is currently in alpha, and currently only supports Desktop/LWJGL3. Mobile and web support will be added
+> very soon in the future.
+
 - **Desktop**: Windows, macOS, and Linux via LWJGL3.
 - **Android**: Full support for Android mobile devices.
 - **iOS**: Support via [MobiVM](https://github.com/MobiVM/robovm).
@@ -234,6 +238,7 @@ public class Custom3DCamera extends FlixelCamera {
 
 ## Features
 
+- **Extreme memory efficiency**: FlixelGDX is designed to be as memory efficient as possible, with a focus on performance and scalability.
 - **Structural hierarchy**: Logic and rendering via `FlixelBasic`, `FlixelObject`, and `FlixelSprite`.
 - **State management**: State switching and substates for menus, pauses, and transitions.
 - **Group system**: Batch updates, collisions, and nested groups.
@@ -246,6 +251,26 @@ public class Custom3DCamera extends FlixelCamera {
 - **Logging & debugging**: `Flixel.log`, `Flixel.watch`, optional debug overlay.
 - **Signals**: `Flixel.Signals` for pre/post update, draw, state switch, window focus, and more.
 - **...and much more!**
+
+### Memory Efficiency
+
+FlixelGDX is incredibly memory efficient. It is designed to be runnable on extremely low-end devices, despite being a 
+full-featured game framework.
+
+These are the stress-test stats to show how memory efficient FlixelGDX is:
+
+**Setup**
+
+- A refurbished 10 year old $200 OptiPlex 7050 with integrated graphics.
+- JVM maximum memory usage: 32MB
+
+**Results**
+
+| Test (Number of Sprites & Active Tweens) | Memory Usage |
+|------------------------------------------|--------------|
+| 100 sprites/tweens (around a normal sized game) | ~4MB |
+| 1000 sprites/tweens | ~6MB |
+| 17308 sprites/tweens (breaking point where it finally crashed) | ~31MB |
 
 ### Entity & Sprite Basics
 

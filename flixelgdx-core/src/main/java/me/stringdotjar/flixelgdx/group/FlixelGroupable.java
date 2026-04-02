@@ -9,28 +9,38 @@ package me.stringdotjar.flixelgdx.group;
 
 import com.badlogic.gdx.utils.SnapshotArray;
 
-import me.stringdotjar.flixelgdx.FlixelBasic;
-
 /**
  * Interface for group-like containers that hold a list of members. Both
  * {@link FlixelGroup} and {@link FlixelSpriteGroup} implement this, allowing
  * generic traversal of the object tree (e.g. for debug utilities).
  *
- * @param <T> The member type (must extend {@link FlixelBasic}).
+ * <p>This interface is intentionally engine-agnostic. It does not require members to extend
+ * any FlixelGDX base class. Engine systems that need {@code FlixelBasic} behavior should
+ * depend on {@link FlixelBasicGroupable} instead.
+ *
+ * @param <T> The member type.
  */
-public interface FlixelGroupable<T extends FlixelBasic> {
+public interface FlixelGroupable<T> {
 
-  /** Adds a member to this group. */
+  /**
+   * Adds a member to this group.
+   *
+   * @param member The member to add.
+   */
   void add(T member);
 
-  /** Removes a member from this group. */
+  /**
+   * Removes a member from this group.
+   *
+   * @param member The member to remove.
+   */
   void remove(T member);
 
   /** Removes all members from this group. */
   void clear();
 
   /** Returns the backing array of members. */
-  SnapshotArray<? extends FlixelBasic> getMembers();
+  SnapshotArray<T> getMembers();
 
   /**
    * Returns the maximum number of members allowed. When {@code 0}, the group

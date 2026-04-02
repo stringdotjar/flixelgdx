@@ -16,7 +16,6 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectMap;
-import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.XmlReader;
 
 import me.stringdotjar.flixelgdx.asset.FlixelAssetManager;
@@ -39,7 +38,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * @see <a href="https://api.haxeflixel.com/flixel/FlxSprite.html">FlxSprite (HaxeFlixel)</a>
  */
-public class FlixelSprite extends FlixelObject implements Pool.Poolable {
+public class FlixelSprite extends FlixelObject {
 
   /** Graphic backing this sprite (shared/cached wrapper around a Texture). */
   @Nullable
@@ -632,9 +631,9 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
 
   @Override
   public void destroy() {
-    setPosition(0f, 0f);
+    super.destroy();
     stateTime = 0;
-    currentAnim = null;
+    currentAnim = "";
     looping = true;
     scaleX = 1f;
     scaleY = 1f;
@@ -665,11 +664,6 @@ public class FlixelSprite extends FlixelObject implements Pool.Poolable {
     Animation<FlixelFrame> anim = animations.get(currentAnim);
     if (anim == null) return true;
     return anim.isAnimationFinished(stateTime);
-  }
-
-  @Override
-  public void reset() {
-    destroy();
   }
 
   public Texture getGraphic() {

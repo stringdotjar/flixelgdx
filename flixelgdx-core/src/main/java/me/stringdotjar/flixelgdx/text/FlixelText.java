@@ -23,6 +23,7 @@ import com.badlogic.gdx.utils.XmlReader;
 
 import me.stringdotjar.flixelgdx.FlixelSprite;
 import me.stringdotjar.flixelgdx.graphics.FlixelFrame;
+import me.stringdotjar.flixelgdx.util.FlixelStringUtil;
 
 import com.badlogic.gdx.utils.ObjectMap;
 
@@ -58,8 +59,8 @@ import org.jetbrains.annotations.NotNull;
  */
 public class FlixelText extends FlixelSprite {
 
-  /** The text being displayed. */
-  private String text = "";
+  /** The text buffer for saving memory when the text is not changing. */
+  private final StringBuilder textBuffer = new StringBuilder(48);
 
   /** Font size in pixels. */
   private int size;
@@ -215,8 +216,8 @@ public class FlixelText extends FlixelSprite {
   }
 
   /** Returns the text currently being displayed. */
-  public String getText() {
-    return text;
+  public StringBuilder getTextBuffer() {
+    return textBuffer;
   }
 
   /**
@@ -226,11 +227,22 @@ public class FlixelText extends FlixelSprite {
    * @return This instance for chaining.
    */
   public FlixelText setText(String text) {
-    String newText = (text != null) ? text : "null";
-    if (!this.text.equals(newText)) {
-      this.text = newText;
-      layoutDirty = true;
+    return setText((CharSequence) text);
+  }
+
+  public FlixelText setText(CharSequence text) {
+    if (text == null) {
+      text = "null";
     }
+    if (FlixelStringUtil.contentEquals(text, textBuffer)) {
+      return this;
+    }
+
+    textBuffer.setLength(0);
+    textBuffer.append(text);
+
+    layoutDirty = true;
+
     return this;
   }
 
@@ -475,7 +487,7 @@ public class FlixelText extends FlixelSprite {
    * have been previously registered via
    * {@link FlixelFontRegistry#register(String, FileHandle)}. Pass {@code null}
    * to clear the registry reference and fall back to the default resolution order
-   * (direct file &rarr; registry default &rarr; built-in font).
+   * (direct file -> registry default -> built-in font).
    *
    * @param id The registered font ID, or {@code null} to clear.
    * @return This instance for chaining.
@@ -531,6 +543,7 @@ public class FlixelText extends FlixelSprite {
     privateBitmapFontOwned = false;
     fontDirty = false;
     layoutDirty = true;
+    font.setUseIntegerPositions(!antialiasing);
     return this;
   }
 
@@ -723,7 +736,7 @@ public class FlixelText extends FlixelSprite {
    * animation state machine in {@link FlixelSprite} from running.
    */
   @Override
-  public void update(float delta) {
+  public void update(float elapsed) {
     // No-op: text does not animate.
   }
 
@@ -732,7 +745,7 @@ public class FlixelText extends FlixelSprite {
     if (!isOnDrawCamera()) {
       return;
     }
-    if (text.isEmpty()) {
+    if (textBuffer.isEmpty()) {
       return;
     }
     rebuildIfDirty();
@@ -762,6 +775,12 @@ public class FlixelText extends FlixelSprite {
     } else {
       drawTextContent(batch, getX(), getY() + textTop);
     }
+  }
+
+  @Override
+  public void setAntialiasing(boolean antialiasing) {
+    this.antialiasing = antialiasing;
+    fontDirty = true;
   }
 
   /** @throws UnsupportedOperationException always; text objects cannot load graphics. */
@@ -870,7 +889,8 @@ public class FlixelText extends FlixelSprite {
   public void destroy() {
     super.destroy();
     disposeFont();
-    text = "";
+    textBuffer.setLength(0);
+    textBuffer.trimToSize();
     size = 8;
     alignment = Alignment.LEFT;
     wordWrap = true;
@@ -897,13 +917,8 @@ public class FlixelText extends FlixelSprite {
   }
 
   @Override
-  public void reset() {
-    destroy();
-  }
-
-  @Override
   public String toString() {
-    return "FlixelText(text=\"" + text + "\", size=" + size
+    return "FlixelText(text=\"" + textBuffer + "\", size=" + size
       + ", x=" + getX() + ", y=" + getY()
       + ", fieldWidth=" + fieldWidth + ", autoSize=" + autoSize + ")";
   }
@@ -928,9 +943,9 @@ public class FlixelText extends FlixelSprite {
    * Regenerates the {@link BitmapFont} based on current settings. The font source
    * is resolved in this order:
    * <ol>
-   *   <li>{@link #fontRegistryId} &mdash; shared generator from {@link FlixelFontRegistry}</li>
-   *   <li>{@link #fontFile} &mdash; privately-owned generator for a direct file</li>
-   *   <li>{@link FlixelFontRegistry#getDefault()} &mdash; global registry default</li>
+   *   <li>{@link #fontRegistryId}: shared generator from {@link FlixelFontRegistry}</li>
+   *   <li>{@link #fontFile}: privately-owned generator for a direct file</li>
+   *   <li>{@link FlixelFontRegistry#getDefault()}: global registry default</li>
    *   <li>libGDX built-in bitmap font (Arial 15px, scaled)</li>
    * </ol>
    */
@@ -948,9 +963,11 @@ public class FlixelText extends FlixelSprite {
       } else if (fontFile != null) {
         freeTypeParams.size = size;
         freeTypeParams.spaceX = space;
-        freeTypeParams.genMipMaps = true;
-        freeTypeParams.minFilter = Texture.TextureFilter.Linear;
-        freeTypeParams.magFilter = Texture.TextureFilter.Linear;
+        freeTypeParams.incremental = true;
+        freeTypeParams.mono = !antialiasing;
+        freeTypeParams.hinting = antialiasing ? FreeTypeFontGenerator.Hinting.Full : FreeTypeFontGenerator.Hinting.None;
+        freeTypeParams.minFilter = antialiasing ? Texture.TextureFilter.Linear : Texture.TextureFilter.Nearest;
+        freeTypeParams.magFilter = antialiasing ? Texture.TextureFilter.Linear : Texture.TextureFilter.Nearest;
         bitmapFont = gen.generateFont(freeTypeParams);
         privateBitmapFontOwned = true;
       } else {
@@ -967,11 +984,13 @@ public class FlixelText extends FlixelSprite {
     if (oldFont != null && oldFont != bitmapFont && oldPrivate) {
       oldFont.dispose();
     }
+
+    bitmapFont.setUseIntegerPositions(!antialiasing);
   }
 
   /**
    * Resolves the {@link FreeTypeFontGenerator} to use, following the cascade:
-   * registry ID &rarr; direct file &rarr; registry default &rarr; {@code null}.
+   * registry ID -> direct file -> registry default -> {@code null}.
    */
   private FreeTypeFontGenerator resolveGenerator() {
     if (fontRegistryId != null) {
@@ -1010,16 +1029,16 @@ public class FlixelText extends FlixelSprite {
     boolean fixedWidth = fieldWidth > 0 && !autoSize;
 
     if (fixedWidth) {
-      glyphLayout.setText(bitmapFont, text, Color.WHITE, fieldWidth,
+      glyphLayout.setText(bitmapFont, textBuffer, Color.WHITE, fieldWidth,
         alignment.gdxAlign, wordWrap);
     } else if (alignment != Alignment.LEFT) {
-      glyphLayout.setText(bitmapFont, text);
+      glyphLayout.setText(bitmapFont, textBuffer);
       float naturalWidth = glyphLayout.width;
       if (naturalWidth > 0) {
-        glyphLayout.setText(bitmapFont, text, Color.WHITE, naturalWidth, alignment.gdxAlign, false);
+        glyphLayout.setText(bitmapFont, textBuffer, Color.WHITE, naturalWidth, alignment.gdxAlign, false);
       }
     } else {
-      glyphLayout.setText(bitmapFont, text);
+      glyphLayout.setText(bitmapFont, textBuffer);
     }
 
     float w = fixedWidth ? fieldWidth : glyphLayout.width;
