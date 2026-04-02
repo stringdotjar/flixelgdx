@@ -22,10 +22,18 @@ import com.badlogic.gdx.utils.SnapshotArray;
  */
 public interface FlixelGroupable<T> {
 
-  /** Adds a member to this group. */
+  /**
+   * Adds a member to this group.
+   *
+   * @param member The member to add.
+   */
   void add(T member);
 
-  /** Removes a member from this group. */
+  /**
+   * Removes a member from this group.
+   *
+   * @param member The member to remove.
+   */
   void remove(T member);
 
   /** Removes all members from this group. */

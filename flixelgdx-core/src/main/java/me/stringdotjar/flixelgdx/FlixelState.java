@@ -12,6 +12,9 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 
 import me.stringdotjar.flixelgdx.group.FlixelGroup;
+
+import java.util.function.Supplier;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -164,36 +167,11 @@ public abstract class FlixelState extends FlixelGroup<FlixelBasic> implements Sc
 
   @Override
   public void destroy() {
-    super.destroy();
-
     hide();
-
     if (subState != null) {
       closeSubState();
     }
-    if (members == null) {
-      return;
-    }
-    Object[] items = members.begin();
-    for (int i = 0, n = members.size; i < n; i++) {
-      FlixelBasic obj = (FlixelBasic) items[i];
-      if (obj != null) {
-        obj.destroy();
-      }
-    }
-
-    members.end();
-    members.clear();
-  }
-
-  /**
-   * Disposes {@code this} state, any active substate, and all members. Called automatically
-   * when {@link me.stringdotjar.flixelgdx.Flixel#switchState(FlixelState)} is used, so that
-   * sprites and other objects release their resources.
-   */
-  @Override
-  public void dispose() {
-    destroy();
+    super.destroy();
   }
 
   /**
@@ -208,6 +186,11 @@ public abstract class FlixelState extends FlixelGroup<FlixelBasic> implements Sc
     if (basic instanceof FlixelSprite sprite) {
       sprite.setAntialiasing(Flixel.globalAntialiasing());
     }
+  }
+
+  @Override
+  public FlixelBasic recycle(@NotNull Supplier<? extends FlixelBasic> factory) {
+    return super.recycle(factory);
   }
 
   @Nullable

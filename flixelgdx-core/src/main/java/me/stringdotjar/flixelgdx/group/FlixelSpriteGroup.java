@@ -22,6 +22,10 @@ import java.util.Comparator;
 import java.util.Random;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * A special {@link FlixelSprite} that can be treated like a single sprite even when
@@ -46,6 +50,11 @@ import java.util.function.Predicate;
  *   <li>{@link RotationMode#ORBIT}: sprites orbit around the group origin as a rigid body;
  *       both position and individual rotation are adjusted by the delta.</li>
  * </ul>
+ *
+ * <p><b>Pooled members:</b> {@link #remove} does not call {@link FlixelSprite#destroy}; use
+ * {@link #removeMember}{@code (sprite, true)} to destroy. {@link #detach} and {@link #removeMember}{@code (member, false)}
+ * only remove the sprite and restore local coordinates. {@link #recycle} reuses {@link #getFirstDead()} with
+ * {@link #preAdd} or {@link #add}s a new sprite.
  */
 public class FlixelSpriteGroup extends FlixelSprite implements FlixelBasicGroupable<FlixelSprite> {
 
@@ -371,6 +380,87 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelBasicGroupa
   }
 
   /**
+   * Same as {@link #remove}. Removes the sprite without destroying it (pool-friendly).
+   *
+   * @param sprite The sprite to detach.
+   */
+  public void detach(FlixelSprite sprite) {
+    remove(sprite);
+  }
+
+  /**
+   * Removes {@code member} from the group and restores its local coordinates. When {@code destroy} is
+   * {@code true}, {@link FlixelSprite#destroy()} is called after removal.
+   *
+   * @param member The member to remove.
+   * @param destroy Whether to call {@link FlixelSprite#destroy()} on the member.
+   */
+  public void removeMember(FlixelSprite member, boolean destroy) {
+    if (member == null || !members.contains(member, true)) {
+      return;
+    }
+    members.removeValue(member, true);
+    member.setX(member.getX() - getX());
+    member.setY(member.getY() - getY());
+    if (destroy) {
+      member.destroy();
+    }
+  }
+
+  @Nullable
+  public FlixelSprite getFirstDead() {
+    FlixelSprite[] items = members.begin();
+    try {
+      for (int i = 0, n = members.size; i < n; i++) {
+        FlixelSprite m = items[i];
+        if (m != null && !m.exists) {
+          return m;
+        }
+      }
+    } finally {
+      members.end();
+    }
+    return null;
+  }
+
+  public int getFirstNullIndex() {
+    FlixelSprite[] items = members.begin();
+    try {
+      for (int i = 0, n = members.size; i < n; i++) {
+        if (items[i] == null) {
+          return i;
+        }
+      }
+    } finally {
+      members.end();
+    }
+    return -1;
+  }
+
+  /**
+   * Revives and {@link #reset}s the first dead member (with {@link #preAdd}), or {@link #add}s
+   * {@code factory.get()}.
+   *
+   * @param factory The factory to create a new member.
+   * @return A reusable member.
+   */
+  public FlixelSprite recycle(@NotNull Supplier<? extends FlixelSprite> factory) {
+    FlixelSprite dead = getFirstDead();
+    if (dead != null) {
+      dead.revive();
+      dead.reset();
+      preAdd(dead);
+      return dead;
+    }
+    FlixelSprite created = factory.get();
+    if (maxSize > 0 && members.size >= maxSize) {
+      return created;
+    }
+    add(created);
+    return created;
+  }
+
+  /**
    * Replaces an existing member with a new sprite. The new sprite is offset by the group's
    * current position. If {@code oldSprite} is not found, {@code newSprite} is simply added
    * to the end of the group instead.
@@ -520,19 +610,33 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelBasicGroupa
     if (predicate == null) {
       return null;
     }
+    FlixelSprite[] items = members.begin();
     for (int i = 0, n = members.size; i < n; i++) {
-      FlixelSprite s = members.get(i);
+      FlixelSprite s = items[i];
       if (s != null && predicate.test(s)) {
         return s;
       }
     }
+    members.end();
     return null;
   }
 
+  /**
+   * Returns the index of the given sprite in the group. If the sprite is not a member of the group, returns {@code -1}.
+   *
+   * @param sprite The sprite to get the index of.
+   * @return The index of the given sprite in the group, or {@code -1} if the sprite is not a member of the group.
+   */
   public int indexOf(FlixelSprite sprite) {
     return members.indexOf(sprite, true);
   }
 
+  /**
+   * Returns {@code true} if the group contains the given sprite, {@code false} otherwise.
+   *
+   * @param sprite The sprite to check.
+   * @return {@code true} if the group contains the given sprite, {@code false} otherwise.
+   */
   public boolean contains(FlixelSprite sprite) {
     return members.indexOf(sprite, true) >= 0;
   }
@@ -671,19 +775,12 @@ public class FlixelSpriteGroup extends FlixelSprite implements FlixelBasicGroupa
 
   @Override
   public void destroy() {
-    forEach(FlixelSprite::destroy);
-    members.clear();
     super.destroy();
-  }
-
-  @Override
-  public void reset() {
-    forEach(FlixelSprite::reset);
+    forEach(FlixelSprite::destroy);
     members.clear();
     rotationMode = RotationMode.INDIVIDUAL;
     rotationRadius = 100f;
     visible = true;
-    super.reset();
   }
 
   /**

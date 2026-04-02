@@ -9,6 +9,8 @@ package me.stringdotjar.flixelgdx;
 
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.utils.Disposable;
+import com.badlogic.gdx.utils.Pool;
+
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -18,7 +20,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * @see <a href="https://api.haxeflixel.com/flixel/FlxBasic.html">FlxBasic (HaxeFlixel)</a>
  */
-public class FlixelBasic implements FlixelUpdatable, FlixelDrawable, FlixelDestroyable, Disposable {
+public class FlixelBasic implements FlixelUpdatable, FlixelDrawable, FlixelDestroyable, Disposable, Pool.Poolable {
 
   private static int idEnumerator = 0;
 
@@ -84,15 +86,19 @@ public class FlixelBasic implements FlixelUpdatable, FlixelDrawable, FlixelDestr
    * <p>Override this function to clean up any resources used by this object,
    * such as textures, fonts, sounds, etc.
    *
-   * <p>This function is called automatically when {@link #dispose()} is called,
-   * so you don't need to call it manually.
+   * <p>This function is called automatically when {@link #dispose()} or
+   * {@link #reset()} is executed, so you don't need to call it manually.
    *
    * @see #dispose()
+   * @see #reset()
    */
   @Override
   public void destroy() {
-    exists = false;
     active = false;
+    alive = true;
+    exists = false;
+    visible = true;
+    cameras = null;
   }
 
   /**
@@ -113,8 +119,21 @@ public class FlixelBasic implements FlixelUpdatable, FlixelDrawable, FlixelDestr
     exists = true;
   }
 
+  /**
+   * Automatically calls {@link #destroy()}. Marked as final to prevent subclasses from overriding it,
+   * they should call {@link #destroy()} instead.
+   */
   @Override
-  public void dispose() {
+  public final void dispose() {
+    destroy();
+  }
+
+  /**
+   * Automatically calls {@link #destroy()}. Marked as final to prevent subclasses from overriding it,
+   * they should call {@link #destroy()} instead.
+   */
+  @Override
+  public final void reset() {
     destroy();
   }
 

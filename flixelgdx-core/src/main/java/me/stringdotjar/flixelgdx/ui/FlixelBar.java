@@ -23,6 +23,7 @@ import me.stringdotjar.flixelgdx.functional.supplier.FloatSupplier;
 import me.stringdotjar.flixelgdx.text.FlixelText;
 import me.stringdotjar.flixelgdx.util.FlixelColor;
 import me.stringdotjar.flixelgdx.util.FlixelSpriteUtil;
+import me.stringdotjar.flixelgdx.util.FlixelStringUtil;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -32,7 +33,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.RandomAccess;
-import java.util.function.Supplier;
+import java.util.function.Consumer;
 
 /**
  * A UI bar for progress, health, stamina, experience, cooldowns, loading, or any value mapped to a
@@ -59,7 +60,8 @@ import java.util.function.Supplier;
  *
  * <p><b>Appearance</b>: Solid colors, custom empty and filled regions, optional two-color gradients,
  * optional border, and threshold-based fill colors with optional color smoothing when the fill percent
- * drops. Text overlays use a {@link java.util.function.Supplier Supplier} of {@link String} (no reflection).
+ * drops. Optional overlay text uses {@link #setText(java.util.function.Consumer)} with a
+ * {@link StringBuilder} scratch buffer (see that method for why).
  *
  * <p><b>Screen space</b>: With {@link #setScreenSpace(boolean)} {@code true}, the bar is offset by the
  * current draw camera scroll so it stays fixed on screen while the world moves.
@@ -131,17 +133,16 @@ public class FlixelBar extends FlixelSprite {
   private final Color thresholdDesiredColor = new Color(Color.WHITE);
   private final Color thresholdScratch = new Color(Color.WHITE);
 
-  // Text overlay.
   @Nullable
-  private Supplier<String> textSupplier;
+  private Consumer<StringBuilder> textFormatter;
+  private final StringBuilder overlayTextScratch = new StringBuilder(48);
+  /** Snapshot of the last string passed to {@link FlixelText#setText}; never the same instance as {@link #overlayTextScratch}. */
+  private final StringBuilder overlayTextLast = new StringBuilder(48);
 
   /**
    * The text object used to display the overlay text.
    */
   public FlixelText text;
-
-  @Nullable
-  private String lastOverlayText;
   private float textOffsetX = 0f;
   private float textOffsetY = 0f;
 
@@ -557,21 +558,30 @@ public class FlixelBar extends FlixelSprite {
   }
 
   /**
-   * Sets an optional label rendered on top of the bar. The supplier is evaluated each {@link #update(float)}
-   * when text is enabled (no reflection). Text is centered on the bar bounds by default; use
-   * {@link #setTextOffset(float, float)} to nudge it. Pass {@code null} to remove overlay text.
+   * Sets an optional label rendered on top of the bar. Each {@link #update(float)}, the given callback
+   * receives a cleared {@link StringBuilder}; append the full visible text (for example
+   * {@code sb.append("HP")} or {@code sb.append(hp).append('/').append(maxHp)}). Text is centered on the
+   * bar by default; use {@link #setTextOffset(float, float)} to nudge it. Pass {@code null} to remove overlay
+   * text.
    *
-   * @param textSupplier {@code null} for no text; otherwise returns the string to show (may be empty).
+   * <p><b>Why a {@code Consumer<StringBuilder>} and not {@code Supplier<String>}?</b> A supplier that returns
+   * a new {@link String} every frame (common with {@link String#format} or {@code +}) allocates on the heap
+   * every frame per bar, which adds up quickly on typical JVMs. This API reuses one {@link StringBuilder} per
+   * bar, compares the new characters to the last label without building a {@link String} when nothing
+   * changed, and only then calls {@link FlixelText#setText(String)}. That keeps HUD text paths much friendlier
+   * to garbage collection.
+   *
+   * @param formatter {@code null} for no overlay; otherwise invoked each update with the shared scratch buffer.
    * @return {@code this} for chaining.
    */
-  public FlixelBar setText(@Nullable Supplier<String> textSupplier) {
-    if (this.textSupplier != textSupplier) {
-      lastOverlayText = null;
+  public FlixelBar setText(@Nullable Consumer<StringBuilder> formatter) {
+    if (this.textFormatter != formatter) {
+      overlayTextLast.setLength(0);
     }
-    this.textSupplier = textSupplier;
-    if (textSupplier == null) {
+    this.textFormatter = formatter;
+    if (formatter == null) {
       text = null;
-      lastOverlayText = null;
+      overlayTextLast.setLength(0);
       return this;
     }
     if (text == null) {
@@ -582,7 +592,7 @@ public class FlixelBar extends FlixelSprite {
   }
 
   /**
-   * Pixel offset added to the centered text position after {@link #setText(java.util.function.Supplier)}.
+   * Pixel offset added to the centered text position after {@link #setText(java.util.function.Consumer)}.
    *
    * @param dx Horizontal offset in pixels (positive moves right).
    * @param dy Vertical offset in pixels (positive moves down in Flixel coordinates).
@@ -596,7 +606,7 @@ public class FlixelBar extends FlixelSprite {
 
   /**
    * Updates sprite animation state, then applies max supplier, value tracking, value smoothing, and refreshes
-   * overlay text from the supplier.
+   * overlay text from the {@link #setText(java.util.function.Consumer)} formatter when set.
    *
    * @param elapsed Seconds since last frame; passed to {@link FlixelSprite#update(float)} and smoothing.
    */
@@ -626,14 +636,13 @@ public class FlixelBar extends FlixelSprite {
       displayedValue = MathUtils.lerp(displayedValue, value, lerpFactor);
     }
 
-    if (text != null && textSupplier != null) {
-      String s = textSupplier.get();
-      if (s == null) {
-        s = "";
-      }
-      if (!Objects.equals(s, lastOverlayText)) {
-        lastOverlayText = s;
-        text.setText(s);
+    if (text != null && textFormatter != null) {
+      overlayTextScratch.setLength(0);
+      textFormatter.accept(overlayTextScratch);
+      if (!FlixelStringUtil.contentEquals(overlayTextScratch, overlayTextLast)) {
+        text.setText(overlayTextScratch);
+        overlayTextLast.setLength(0);
+        overlayTextLast.append(overlayTextScratch);
       }
     }
   }
@@ -694,19 +703,16 @@ public class FlixelBar extends FlixelSprite {
       gradientTexture = null;
       gradientRegion = null;
     }
-    if (whitePixel != null) {
-      FlixelSpriteUtil.releasePooledWhitePixelTexture();
-      whitePixel = null;
-    }
+    whitePixel = null;
     text = null;
-    textSupplier = null;
+    textFormatter = null;
   }
 
   private void ensureWhitePixel() {
     if (whitePixel != null) {
       return;
     }
-    whitePixel = FlixelSpriteUtil.acquirePooledWhitePixelTexture();
+    whitePixel = FlixelSpriteUtil.obtainWhitePixelTexture(Flixel.ensureAssets());
   }
 
   private void drawFullEmpty(Batch batch, float x, float y, float w, float h) {

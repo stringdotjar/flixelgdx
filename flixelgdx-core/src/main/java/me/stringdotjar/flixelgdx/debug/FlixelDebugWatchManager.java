@@ -8,6 +8,7 @@
 package me.stringdotjar.flixelgdx.debug;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.utils.Array;
 
 import me.stringdotjar.flixelgdx.functional.supplier.ByteSupplier;
 import me.stringdotjar.flixelgdx.functional.supplier.CharSupplier;
@@ -193,6 +194,27 @@ public class FlixelDebugWatchManager {
   public void forEach(@NotNull BiConsumer<String, String> callback) {
     for (Map.Entry<String, WatchEntry> entry : watches.entrySet()) {
       callback.accept(entry.getKey(), entry.getValue().getValueString());
+    }
+  }
+
+  /**
+   * Formats all watch lines into {@code output}, reusing existing {@link StringBuilder} slots and
+   * shrinking the array when fewer watches are registered. Each line includes markup for the debug overlay.
+   *
+   * @param output Cleared and filled with one builder per watch entry (order follows {@link Map#entrySet()}).
+   */
+  public void fillWatchLineBuilders(@NotNull Array<StringBuilder> output) {
+    int n = watches.size();
+    while (output.size < n) {
+      output.add(new StringBuilder(64));
+    }
+    output.setSize(n);
+    int i = 0;
+    for (Map.Entry<String, WatchEntry> entry : watches.entrySet()) {
+      StringBuilder sb = output.get(i++);
+      sb.setLength(0);
+      sb.append("[#88CCFF]").append(entry.getKey()).append(":[#FFFFFF] ");
+      sb.append(entry.getValue().getValueString());
     }
   }
 

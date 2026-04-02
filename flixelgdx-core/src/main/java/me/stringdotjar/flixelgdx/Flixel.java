@@ -9,6 +9,9 @@ package me.stringdotjar.flixelgdx;
 
 import com.badlogic.gdx.Application.ApplicationType;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -209,6 +212,12 @@ public final class Flixel {
 
   /** Should the game use antialiasing globally? */
   private static boolean antialiasing = false;
+
+  /**
+   * Filled by {@link #getApproximateLoadedTextureBytes()} via {@link AssetManager#getAll}. Reused so that method
+   * allocates no new collections per call. Guarded by synchronization, not re-entrant.
+   */
+  private static final Array<Texture> TEXTURE_BYTES_SCRATCH = new Array<>(false, 64);
 
   /** The static instance used to access the core elements of the game. */
   @NotNull
@@ -886,7 +895,7 @@ public final class Flixel {
   }
 
   /**
-   * Returns an estimate of the native/VRAM heap usage in bytes as reported by libGDX.
+   * Returns an estimate of the native heap usage in bytes as reported by libGDX.
    * This is not available on all platforms and may return {@code 0} when unsupported.
    */
   public static long getNativeHeapUsedBytes() {
@@ -894,21 +903,86 @@ public final class Flixel {
   }
 
   /**
-   * Returns the native/VRAM heap usage in megabytes.
+   * Returns the native heap usage in megabytes.
    *
-   * @return The native/VRAM heap usage in megabytes.
+   * @return The native heap usage in megabytes.
    */
   public static float getNativeHeapUsedMegabytes() {
     return getNativeHeapUsedBytes() / (1024f * 1024f);
   }
 
   /**
-   * Returns the native/VRAM heap usage in gigabytes.
+   * Returns the native heap usage in gigabytes.
    *
-   * @return The native/VRAM heap usage in gigabytes.
+   * @return The native heap usage in gigabytes.
    */
   public static float getNativeHeapUsedGigabytes() {
     return getNativeHeapUsedBytes() / (1024f * 1024f * 1024f);
+  }
+
+  /**
+   * Approximate GPU-style memory for <strong>loaded</strong> {@link Texture} assets in the global
+   * {@link #assets} {@link AssetManager}, as {@code width x height x bytesPerPixel} per texture (base level,
+   * uncompressed estimate). Mipmaps, render targets, compressed formats, and textures not managed by the
+   * asset manager are not reflected accurately; use for debug/trending only.
+   *
+   * <p>This method does not allocate a new {@link Array}, uses an internal scratch buffer (synchronized, non-reentrant).
+   *
+   * @return Sum in bytes, or {@code 0} when {@link #assets} is not initialized.
+   */
+  public static long getApproximateLoadedTextureBytes() {
+    FlixelAssetManager fam = assets;
+    if (fam == null) {
+      return 0L;
+    }
+    AssetManager manager = fam.getManager();
+    if (manager == null) {
+      return 0L;
+    }
+    synchronized (TEXTURE_BYTES_SCRATCH) {
+      TEXTURE_BYTES_SCRATCH.clear();
+      manager.getAll(Texture.class, TEXTURE_BYTES_SCRATCH);
+      long total = 0L;
+      for (int i = 0, n = TEXTURE_BYTES_SCRATCH.size; i < n; i++) {
+        Texture tex = TEXTURE_BYTES_SCRATCH.get(i);
+        if (tex == null) {
+          continue;
+        }
+        int w = tex.getWidth();
+        int h = tex.getHeight();
+        if (w <= 0 || h <= 0) {
+          continue;
+        }
+        int bpp = textureBytesPerPixel(tex);
+        total += (long) w * (long) h * (long) bpp;
+      }
+      return total;
+    }
+  }
+
+  private static int textureBytesPerPixel(Texture texture) {
+    try {
+      var data = texture.getTextureData();
+      if (data == null) {
+        return 4;
+      }
+      return pixmapFormatBytesPerPixel(data.getFormat());
+    } catch (Exception e) {
+      return 4;
+    }
+  }
+
+  private static int pixmapFormatBytesPerPixel(Pixmap.Format format) {
+    if (format == null) {
+      return 4;
+    }
+    return switch (format) {
+      case Alpha, Intensity -> 1;
+      case LuminanceAlpha -> 2;
+      case RGB888 -> 3;
+      case RGB565, RGBA4444, RGBA8888 -> 4;
+      default -> 4;
+    };
   }
 
   /**

@@ -1215,13 +1215,13 @@ public class FlixelCamera extends FlixelBasic {
    */
   @Override
   public void destroy() {
+    super.destroy();
     stopFX();
     target = null;
     deadzone = null;
     flashOnComplete = null;
     fadeOnComplete = null;
     shakeOnComplete = null;
-    super.destroy();
   }
 
   public boolean isFlashActive() {

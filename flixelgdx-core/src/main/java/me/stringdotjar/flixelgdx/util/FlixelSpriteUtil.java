@@ -13,51 +13,63 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.math.MathUtils;
 
+import me.stringdotjar.flixelgdx.asset.FlixelAssetManager;
+import me.stringdotjar.flixelgdx.graphics.FlixelGraphic;
+
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Helper class related to {@link me.stringdotjar.flixelgdx.FlixelSprite}.
  *
  * <p>These utilities are designed to work with FlixelGDX's normal Batch-based draw flow.
  * Avoid using ShapeRenderer in core game rendering unless you control the render pipeline.
+ *
+ * <p>Do not call {@link #createWhitePixelTexture()} every frame or per
+ * sprite instance in hot paths. That allocates new {@link Pixmap} and {@link Texture} objects and
+ * will spike heap usage on most JVMs. Prefer {@link #obtainWhitePixelTexture(FlixelAssetManager)},
+ * which registers a single persistent texture with the asset manager (see
+ * {@link me.stringdotjar.flixelgdx.asset.FlixelDefaultAssetManager}) and reuses it for the lifetime of the game.
  */
 public final class FlixelSpriteUtil {
 
   private FlixelSpriteUtil() {}
 
-  @Nullable
-  private static Texture pooledWhitePixelTexture;
-  private static int pooledWhitePixelTextureRefs;
+  /**
+   * Fixed asset key for the framework-owned 1x1 white {@link Texture} registered via
+   * {@link #obtainWhitePixelTexture(FlixelAssetManager)}.
+   */
+  public static final String WHITE_PIXEL_TEXTURE_KEY = "__flixel_internal__/white_pixel_1x1";
+
+  private static final Object WHITE_PIXEL_LOCK = new Object();
 
   /**
-   * Returns a shared 1x1 white pixel texture. Call {@link #releasePooledWhitePixelTexture()} once per
-   * successful acquire when the owner is disposed (reference-counted).
+   * Returns the shared 1x1 white {@link Texture} registered with {@code assets}. The first call
+   * creates the texture, wraps it in a {@link FlixelGraphic} with {@link FlixelGraphic#setPersist(boolean)}
+   * {@code true}, and registers it with {@link FlixelAssetManager#registerWrapper}.
+   * Callers must not {@link Texture#dispose()} this texture; lifecycle follows the asset manager.
+   *
+   * @param assets Non-null manager from {@link me.stringdotjar.flixelgdx.Flixel#ensureAssets()}.
    */
-  public static synchronized Texture acquirePooledWhitePixelTexture() {
-    if (pooledWhitePixelTexture == null) {
-      pooledWhitePixelTexture = createWhitePixelTexture();
-    }
-    pooledWhitePixelTextureRefs++;
-    return pooledWhitePixelTexture;
-  }
-
-  /** Releases one reference obtained from {@link #acquirePooledWhitePixelTexture()}. */
-  public static synchronized void releasePooledWhitePixelTexture() {
-    if (pooledWhitePixelTextureRefs <= 0) {
-      return;
-    }
-    pooledWhitePixelTextureRefs--;
-    if (pooledWhitePixelTextureRefs == 0 && pooledWhitePixelTexture != null) {
-      pooledWhitePixelTexture.dispose();
-      pooledWhitePixelTexture = null;
+  @NotNull
+  public static Texture obtainWhitePixelTexture(@NotNull FlixelAssetManager assets) {
+    synchronized (WHITE_PIXEL_LOCK) {
+      FlixelGraphic existing = assets.peekWrapper(WHITE_PIXEL_TEXTURE_KEY, FlixelGraphic.class);
+      if (existing != null) {
+        return existing.require();
+      }
+      Texture t = createWhitePixelTexture();
+      FlixelGraphic g = new FlixelGraphic(assets, WHITE_PIXEL_TEXTURE_KEY, t);
+      g.setPersist(true);
+      assets.registerWrapper(g);
+      return g.require();
     }
   }
 
   /**
    * Creates a 1x1 white pixel texture.
    *
-   * <p>Caller owns the returned Texture and must dispose of it through {@link Texture#dispose()} themselves.
+   * <p><b>Ownership:</b> Prefer {@link #obtainWhitePixelTexture(FlixelAssetManager)} so only one
+   * instance exists. If you call this directly, you own the returned texture and must dispose it.
    *
    * @return The created white pixel texture.
    */
