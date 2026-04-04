@@ -7,52 +7,64 @@
 
 package me.stringdotjar.flixelgdx.group;
 
-import com.badlogic.gdx.utils.Pool;
+import com.badlogic.gdx.utils.SnapshotArray;
 
 import me.stringdotjar.flixelgdx.FlixelBasic;
 
-import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
- * A {@link FlixelGroupable} whose members are constrained to {@link FlixelBasic} and are always tied to a
- * mandatory {@link Pool}. {@link FlixelGroup#remove} returns instances to that pool (after {@code reset}, which
- * invokes {@link FlixelBasic#destroy}).
+ * A {@link FlixelGroupable} whose members are {@link FlixelBasic} instances. Engine code (overlap checks, debug
+ * traversal, {@link FlixelBasicGroup}) can depend on this marker and the helpers below without forcing generic
+ * {@link FlixelGroup} users to extend {@link FlixelBasic}.
  *
- * <p>Use this in engine systems that assume FlixelGDX lifecycle and fields like {@code exists}, {@code active},
- * or {@code visible}. External libGDX projects that do not want to extend {@link FlixelBasic} can implement
- * {@link FlixelGroupable} directly instead.
+ * <p>For lifecycle guidance ({@code kill}/{@code revive}/{@code destroy}), see {@link FlixelBasic}.
  *
- * @param <T> The member type.
+ * @param <T> Member type.
  */
 public interface FlixelBasicGroupable<T extends FlixelBasic> extends FlixelGroupable<T> {
 
-  @NotNull
-  Pool<T> getMemberPool();
-
   /**
-   * Obtains from {@link #getMemberPool()}, revives, and sets {@code active} and {@code visible}. Does not add to the
-   * group. Call {@link #add} yourself after configuring the instance.
+   * Removes the member from the group; if {@code destroy} is {@code true}, also calls {@link FlixelBasic#destroy()} on it
+   * after removal.
+   *
+   * @param member The member to remove.
+   * @param destroy If {@code true}, call {@link FlixelBasic#destroy()} after unlinking.
    */
-  default @NotNull T obtainMember() {
-    T t = getMemberPool().obtain();
-    t.revive();
-    t.active = true;
-    t.visible = true;
-    return t;
+  default void removeMember(T member, boolean destroy) {
+    if (member == null) {
+      return;
+    }
+    SnapshotArray<T> members = getMembers();
+    if (members == null || !members.contains(member, true)) {
+      return;
+    }
+    remove(member);
+    if (destroy) {
+      member.destroy();
+    }
   }
 
   /**
-   * Same as {@link #obtainMember()} but checks runtime type. If the pool produces a different class, the instance is
-   * freed back to the pool and an exception is thrown. Use when your {@link Pool#newObject()} is typed to a single
-   * concrete subclass (for example only {@link me.stringdotjar.flixelgdx.FlixelSprite}).
+   * Returns the first non-null member with {@code exists == false}, or {@code null}.
    */
-  default @NotNull <C extends T> C obtainMemberAs(@NotNull Class<C> type) {
-    T t = obtainMember();
-    if (!type.isInstance(t)) {
-      getMemberPool().free(t);
-      throw new IllegalArgumentException(
-        "Pool produced " + t.getClass().getName() + " but " + type.getName() + " was requested. Use a pool whose newObject() returns the expected type.");
+  @Nullable
+  default T getFirstDead() {
+    SnapshotArray<T> members = getMembers();
+    if (members == null) {
+      return null;
     }
-    return type.cast(t);
+    T[] items = members.begin();
+    try {
+      for (int i = 0, n = members.size; i < n; i++) {
+        T m = items[i];
+        if (m != null && !m.exists) {
+          return m;
+        }
+      }
+    } finally {
+      members.end();
+    }
+    return null;
   }
 }

@@ -7,8 +7,9 @@
 
 package me.stringdotjar.flixelgdx;
 
-import com.badlogic.gdx.Application.ApplicationType;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.Application.ApplicationType;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
@@ -31,14 +32,10 @@ import me.stringdotjar.flixelgdx.backend.reflect.FlixelUnsupportedReflectionHand
 import me.stringdotjar.flixelgdx.backend.runtime.FlixelRuntimeMode;
 import me.stringdotjar.flixelgdx.debug.FlixelDebugOverlay;
 import me.stringdotjar.flixelgdx.debug.FlixelDebugWatchManager;
-import me.stringdotjar.flixelgdx.group.FlixelBasicGroupable;
-import me.stringdotjar.flixelgdx.group.FlixelGroup;
+import me.stringdotjar.flixelgdx.group.FlixelGroupable;
 import me.stringdotjar.flixelgdx.logging.FlixelStackTraceProvider;
 import me.stringdotjar.flixelgdx.text.FlixelFontRegistry;
 import me.stringdotjar.flixelgdx.util.FlixelConstants;
-
-import com.badlogic.gdx.Input;
-
 import me.stringdotjar.flixelgdx.input.keyboard.FlixelKeyInputManager;
 import me.stringdotjar.flixelgdx.input.mouse.FlixelMouseManager;
 import me.stringdotjar.flixelgdx.util.save.FlixelSave;
@@ -488,7 +485,7 @@ public final class Flixel {
     }
     game.resetCameras();
     state = newState;
-    ((FlixelGroup<?>) state).ensureMembers();
+    state.ensureMembers();
     state.create();
     currentStateFactory = stateFactory;
     Signals.postStateSwitch.dispatch(new StateSwitchSignalData(state));
@@ -1423,7 +1420,7 @@ public final class Flixel {
 
   /**
    * Checks for overlaps between two objects or groups. Can be called with
-   * any combination of single {@link FlixelObject}s and {@link FlixelBasicGroupable}s.
+   * any combination of single {@link FlixelObject}s and {@link FlixelGroupable}s.
    *
    * @param objectOrGroup1 First object or group (may be {@code null} to use the current state).
    * @param objectOrGroup2 Second object or group (may be {@code null} to use the current state).
@@ -1479,21 +1476,25 @@ public final class Flixel {
                                          BiFunction<FlixelObject, FlixelObject, Boolean> processCallback) {
     boolean result = false;
 
-    if (obj1 instanceof FlixelBasicGroupable<?> group1) {
-      Array<? extends FlixelBasic> members = (Array<? extends FlixelBasic>) group1.getMembers();
-      for (FlixelBasic member : members) {
-        if (member != null && member.exists) {
-          result |= overlapInternal(member, obj2, notifyCallback, processCallback);
+    if (obj1 instanceof FlixelGroupable<?> group1) {
+      Array<?> members = group1.getMembers();
+      if (members != null) {
+        for (Object o : members) {
+          if (o instanceof FlixelBasic member && member.exists) {
+            result |= overlapInternal(member, obj2, notifyCallback, processCallback);
+          }
         }
       }
       return result;
     }
 
-    if (obj2 instanceof FlixelBasicGroupable<?> group2) {
-      Array<? extends FlixelBasic> members = (Array<? extends FlixelBasic>) group2.getMembers();
-      for (FlixelBasic member : members) {
-        if (member != null && member.exists) {
-          result |= overlapInternal(obj1, member, notifyCallback, processCallback);
+    if (obj2 instanceof FlixelGroupable<?> group2) {
+      Array<?> members = group2.getMembers();
+      if (members != null) {
+        for (Object o : members) {
+          if (o instanceof FlixelBasic member && member.exists) {
+            result |= overlapInternal(obj1, member, notifyCallback, processCallback);
+          }
         }
       }
       return result;

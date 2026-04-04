@@ -429,11 +429,10 @@ public final class FlixelSpriteUtil {
 
   /**
    * Adjusts RGB toward white ({@code brightness = 1}) or black ({@code brightness = -1}), matching Adobe Animate style
-   * brightness as described for HaxeFlixel {@code FlxSpriteUtil.setBrightness}. Alpha is preserved.
+   * brightness as described for FlixelGDX {@code FlixelSpriteUtil.setBrightness}. Alpha is preserved.
    *
    * @param sprite The sprite to set the brightness of.
    * @param brightness Clamped to {@code [-1, 1]}.
-   * @return The brightness of the sprite.
    */
   public static void setBrightness(@NotNull FlixelSprite sprite, float brightness) {
     Objects.requireNonNull(sprite, "The sprite provided cannot be null!");

@@ -19,7 +19,7 @@ public enum FlixelTweenType {
   /** Like {@link #PERSIST} but plays once in reverse; does not remove on finish. */
   BACKWARD,
 
-  /** Restarts immediately when it finishes. {@link FlixelTween#onComplete} is called every cycle. */
+  /** Restarts immediately when it finishes. {@code onComplete} is called every cycle. */
   LOOPING,
 
   /** Like {@link #LOOPING} but every second run is in reverse. {@code onComplete} is called every cycle. */
