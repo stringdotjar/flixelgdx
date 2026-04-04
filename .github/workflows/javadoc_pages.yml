@@ -44,7 +44,7 @@ jobs:
         shell: bash
 
       - name: Generate Javadoc (Android)
-        run: ./gradlew -PincludeAndroid=true :flixelgdx-android:javadoc --no-daemon --warning-mode all
+        run: ./gradlew -PincludeAndroid=true :flixelgdx-android:javaDocReleaseGeneration --no-daemon --warning-mode all
         shell: bash
 
       - name: Generate Javadoc (iOS)
