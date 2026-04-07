@@ -20,9 +20,6 @@ import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import games.rednblack.miniaudio.MASound;
-import games.rednblack.miniaudio.loader.MASoundLoader;
-import me.stringdotjar.flixelgdx.Flixel;
 import me.stringdotjar.flixelgdx.audio.FlixelSoundSource;
 import me.stringdotjar.flixelgdx.audio.FlixelSoundSourceLoader;
 import me.stringdotjar.flixelgdx.graphics.FlixelGraphicSource;
@@ -74,10 +71,9 @@ public class FlixelDefaultAssetManager implements FlixelAssetManager {
     }
   }
 
-  /** Constructs a new asset manager with the default loaders for audio, strings, and sound sources. */
+  /** Constructs a new asset manager with the default loaders for strings and sound sources. */
   public FlixelDefaultAssetManager() {
     manager = new AssetManager();
-    ensureMiniAudioLoader();
     manager.setLoader(String.class, new FlixelStringAssetLoader(manager.getFileHandleResolver()));
     manager.setLoader(FlixelSoundSource.class, new FlixelSoundSourceLoader(manager.getFileHandleResolver()));
     registerDefaultExtensionMappings();
@@ -172,18 +168,6 @@ public class FlixelDefaultAssetManager implements FlixelAssetManager {
       throw new IllegalArgumentException("extension cannot be null.");
     }
     extensionRegistry.remove(normalizeExtension(extension));
-  }
-
-  /**
-   * Registers (or re-registers) the MiniAudio {@link MASound} loader, if the global audio system is available.
-   *
-   * <p>This is a no-op until {@link me.stringdotjar.flixelgdx.Flixel#sound} is initialized.
-   */
-  public void ensureMiniAudioLoader() {
-    if (Flixel.sound == null) {
-      return;
-    }
-    manager.setLoader(MASound.class, new MASoundLoader(Flixel.sound.getEngine(), manager.getFileHandleResolver()));
   }
 
   /** Returns the underlying libGDX {@link AssetManager}. */

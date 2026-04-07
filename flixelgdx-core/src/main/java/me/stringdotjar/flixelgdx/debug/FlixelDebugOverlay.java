@@ -38,7 +38,6 @@ import me.stringdotjar.flixelgdx.util.FlixelDebugUtil;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -365,25 +364,25 @@ public class FlixelDebugOverlay implements FlixelUpdatable, FlixelDestroyable, D
     if (logger == null) {
       return;
     }
-    List<FlixelDebugConsoleEntry> entries = logger.getConsoleEntries();
-    if (entries == null || entries.isEmpty()) {
+    FlixelDebugConsoleEntry[] entries = logger.getConsoleEntries();
+    if (entries == null || entries.length == 0) {
       return;
     }
     for (FlixelDebugConsoleEntry entry : entries) {
-      List<String> lines = entry.getConsoleLines();
-      if (lines == null || lines.isEmpty()) {
+      String[] lines = entry.getConsoleLines();
+      if (lines == null || lines.length == 0) {
         continue;
       }
       CachedConsoleBlock block = obtainConsoleBlock();
       StringBuilder header = block.header;
       header.setLength(0);
       header.append("[#AADDFF]<").append(entry.getName()).append('>');
-      int n = lines.size();
+      int n = lines.length;
       block.ensureBodyLineCount(n);
       for (int i = 0; i < n; i++) {
         StringBuilder body = block.bodies[i];
         body.setLength(0);
-        body.append(CONSOLE_BODY_LINE_PREFIX).append(lines.get(i));
+        body.append(CONSOLE_BODY_LINE_PREFIX).append(lines[i]);
       }
       block.bodyCount = n;
       cachedConsoleBlocks.add(block);
