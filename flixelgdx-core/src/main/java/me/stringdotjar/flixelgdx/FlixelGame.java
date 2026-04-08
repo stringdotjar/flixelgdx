@@ -355,8 +355,9 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
       }
 
       // Update all cameras.
-      for (FlixelCamera camera : cameras) {
-        camera.update(elapsed);
+      FlixelCamera[] cameraItems = cameras.items;
+      for (int i = 0, n = cameras.size; i < n; i++) {
+        cameraItems[i].update(elapsed);
       }
     }
 
@@ -391,7 +392,9 @@ public abstract class FlixelGame implements ApplicationListener, FlixelUpdatable
     FlixelState state = Flixel.getState();
 
     // Loop through all cameras and draw the state/substate chain onto each camera.
-    for (FlixelCamera camera : cameras) {
+    FlixelCamera[] cameraItems = cameras.items;
+    for (int ci = 0, cn = cameras.size; ci < cn; ci++) {
+      FlixelCamera camera = cameraItems[ci];
       Flixel.setDrawCamera(camera);
       try {
         if (gamePaused) {

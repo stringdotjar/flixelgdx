@@ -49,8 +49,18 @@ public interface FlixelTeaVMExtension {
   /** Gradle extension name used to register this extension under. */
   String NAME = "flixelgdx";
 
+  /** Default title for the game's browser tab. */
+  String DEFAULT_TITLE = "My FlixelGDX Game";
+
   /** Default HTML canvas element ID expected by {@code FlixelTeaVMLauncher}. */
   String DEFAULT_CANVAS_ID = "flixelgdx-canvas";
+
+  /**
+   * The title that is set on the browser tab the game is running in.
+   *
+   * @return The title of the tab.
+   */
+  Property<String> getTitle();
 
   /**
    * ID of the HTML {@code <canvas>} element that the game renders into.

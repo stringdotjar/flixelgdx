@@ -111,6 +111,7 @@ import java.util.jar.JarFile;
  *
  * <pre>{@code
  * flixelgdx {
+ *   title = 'My Game Title'                                        // default: My FlixelGDX Game
  *   canvasId = 'my-canvas'                                         // default: 'flixelgdx-canvas'
  *   outputDir = file("$buildDir/dist/webapp")                      // default: same value
  *   devServerPort = 1234                                           // default: 8080
@@ -128,8 +129,8 @@ import java.util.jar.JarFile;
  */
 public class FlixelTeaVMPlugin implements Plugin<Project> {
 
-  private static final String TASK_GROUP = "flixelgdx teavm";
-  private static final String INDEX_TEMPLATE = "/me/stringdotjar/flixelgdx/gradle/teavm/default-index.html";
+  private static final String TASK_GROUP = "flixelgdx";
+  private static final String DEFAULT_INDEX_TEMPLATE = "/me/stringdotjar/flixelgdx/gradle/teavm/default-index.html";
   private static final String DEFAULT_STARTUP_LOGO = "me/stringdotjar/flixelgdx/gradle/teavm/default-startup-logo.png";
 
   @Override
@@ -137,6 +138,7 @@ public class FlixelTeaVMPlugin implements Plugin<Project> {
     FlixelTeaVMExtension ext = project.getExtensions().create(FlixelTeaVMExtension.NAME, FlixelTeaVMExtension.class);
 
     ext.getCanvasId().convention(FlixelTeaVMExtension.DEFAULT_CANVAS_ID);
+    ext.getTitle().convention(FlixelTeaVMExtension.DEFAULT_TITLE);
     ext.getOutputDir().convention(project.getLayout().getBuildDirectory().dir("dist/webapp"));
     ext.getWebappDir().convention(project.getLayout().getProjectDirectory().dir("src/main/webapp"));
     ext.getAssetsDir().convention(project.getRootProject().getLayout().getProjectDirectory().dir("assets"));
@@ -211,15 +213,16 @@ public class FlixelTeaVMPlugin implements Plugin<Project> {
         // Generate from the default built-in template.
         try {
           String template;
-          try (InputStream in = FlixelTeaVMPlugin.class.getResourceAsStream(INDEX_TEMPLATE)) {
+          try (InputStream in = FlixelTeaVMPlugin.class.getResourceAsStream(DEFAULT_INDEX_TEMPLATE)) {
             if (in == null) {
-              throw new IOException("default-index.html template not found in plugin JAR at " + INDEX_TEMPLATE);
+              throw new IOException("default-index.html template not found in plugin JAR at " + DEFAULT_INDEX_TEMPLATE);
             }
             template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
           }
           String html = template
-              .replace("{{CANVAS_ID}}", ext.getCanvasId().get())
-              .replace("{{FAVICON}}", faviconLink);
+            .replace("{{TITLE}}", ext.getTitle().get())
+            .replace("{{CANVAS_ID}}", ext.getCanvasId().get())
+            .replace("{{FAVICON}}", faviconLink);
           Files.writeString(new File(outputDir, "index.html").toPath(), html, StandardCharsets.UTF_8);
         } catch (IOException e) {
           throw new RuntimeException("FlixelGDX: failed to generate default index.html.", e);
